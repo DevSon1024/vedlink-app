@@ -2,11 +2,10 @@ package com.devson.vedlink.presentation.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.repository.LinkRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,7 +18,8 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val repository: LinkRepository
+    private val repository: LinkRepository,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -27,24 +27,41 @@ class SettingsViewModel @Inject constructor(
 
     init {
         loadStats()
+        loadPreferences()
     }
 
     private fun loadStats() {
         viewModelScope.launch {
             val total = repository.getLinksCount()
-            _uiState.value = _uiState.value.copy(totalLinks = total)
+            _uiState.update { it.copy(totalLinks = total) }
+        }
+    }
+
+    private fun loadPreferences() {
+        viewModelScope.launch {
+            themePreferences.isDarkMode.collect { isDark ->
+                _uiState.update { it.copy(isDarkMode = isDark) }
+            }
+        }
+
+        viewModelScope.launch {
+            themePreferences.autoFetchMetadata.collect { autoFetch ->
+                _uiState.update { it.copy(autoFetchMetadata = autoFetch) }
+            }
         }
     }
 
     fun toggleDarkMode() {
-        _uiState.value = _uiState.value.copy(
-            isDarkMode = !_uiState.value.isDarkMode
-        )
+        viewModelScope.launch {
+            val newValue = !_uiState.value.isDarkMode
+            themePreferences.setDarkMode(newValue)
+        }
     }
 
     fun toggleAutoFetchMetadata() {
-        _uiState.value = _uiState.value.copy(
-            autoFetchMetadata = !_uiState.value.autoFetchMetadata
-        )
+        viewModelScope.launch {
+            val newValue = !_uiState.value.autoFetchMetadata
+            themePreferences.setAutoFetchMetadata(newValue)
+        }
     }
 }

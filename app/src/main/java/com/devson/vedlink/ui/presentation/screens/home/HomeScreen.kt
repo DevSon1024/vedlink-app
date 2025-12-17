@@ -82,7 +82,8 @@ fun HomeScreen(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -117,6 +118,7 @@ fun HomeScreen(
         }
     }
 
+    // Dialogs remain the same...
     if (showAddDialog) {
         AddLinkDialog(
             onDismiss = { showAddDialog = false },

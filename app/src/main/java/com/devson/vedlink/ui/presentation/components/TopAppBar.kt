@@ -1,5 +1,7 @@
 package com.devson.vedlink.presentation.components
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
@@ -21,7 +23,7 @@ fun VedLinkTopAppBar(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold
             )
         },
         actions = {
@@ -40,7 +42,9 @@ fun VedLinkTopAppBar(
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
-        )
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        windowInsets = WindowInsets.statusBars
     )
 }
