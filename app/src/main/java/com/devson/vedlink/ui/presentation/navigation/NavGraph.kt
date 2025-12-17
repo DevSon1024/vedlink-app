@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.devson.vedlink.presentation.screens.details.LinkDetailsScreen
 import com.devson.vedlink.presentation.screens.favorites.FavoritesScreen
 import com.devson.vedlink.presentation.screens.home.HomeScreen
 import com.devson.vedlink.presentation.screens.settings.SettingsScreen
@@ -45,7 +46,10 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val linkId = backStackEntry.arguments?.getInt("linkId") ?: return@composable
-            // LinkDetailsScreen will be implemented later
+            LinkDetailsScreen(
+                linkId = linkId,
+                onNavigateBack = { navController.navigateUp() }
+            )
         }
     }
 }
