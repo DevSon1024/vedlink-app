@@ -23,6 +23,10 @@ class LinkRepository @Inject constructor(
         return linkDao.getLinkById(id)?.toDomain()
     }
 
+    suspend fun getLinkByUrl(url: String): Link? {
+        return linkDao.getLinkByUrl(url)?.toDomain()
+    }
+
     fun getFavoriteLinks(): Flow<List<Link>> {
         return linkDao.getFavoriteLinks().map { entities ->
             entities.map { it.toDomain() }
@@ -36,6 +40,11 @@ class LinkRepository @Inject constructor(
     }
 
     suspend fun insertLink(link: Link): Long {
+        // Check if URL already exists
+        val existing = linkDao.getLinkByUrl(link.url)
+        if (existing != null) {
+            return existing.id.toLong()
+        }
         return linkDao.insertLink(link.toEntity())
     }
 

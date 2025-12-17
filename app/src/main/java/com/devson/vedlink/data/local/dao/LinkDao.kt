@@ -13,6 +13,9 @@ interface LinkDao {
     @Query("SELECT * FROM links WHERE id = :id")
     suspend fun getLinkById(id: Int): LinkEntity?
 
+    @Query("SELECT * FROM links WHERE url = :url LIMIT 1")
+    suspend fun getLinkByUrl(url: String): LinkEntity?
+
     @Query("SELECT * FROM links WHERE isFavorite = 1 ORDER BY createdAt DESC")
     fun getFavoriteLinks(): Flow<List<LinkEntity>>
 
@@ -22,10 +25,10 @@ interface LinkDao {
     @Query("SELECT * FROM links WHERE title LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' ORDER BY createdAt DESC")
     fun searchLinks(query: String): Flow<List<LinkEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLink(link: LinkEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLinks(links: List<LinkEntity>)
 
     @Update
