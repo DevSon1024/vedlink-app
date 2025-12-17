@@ -7,16 +7,20 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.presentation.components.CompactLinkCard
 import com.devson.vedlink.presentation.components.LinkCard
 import com.devson.vedlink.presentation.components.VedLinkTopAppBar
 import kotlinx.coroutines.flow.collectLatest
@@ -118,7 +122,6 @@ fun HomeScreen(
         }
     }
 
-    // Dialogs remain the same...
     if (showAddDialog) {
         AddLinkDialog(
             onDismiss = { showAddDialog = false },
@@ -163,6 +166,7 @@ fun SearchBar(
             }
         },
         singleLine = true,
+        shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -181,25 +185,40 @@ fun LinksList(
     if (isGridView) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = 12.dp,
+                bottom = 88.dp // Extra padding for FAB
+            ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(links) { link ->
-                LinkCard(
+            items(
+                items = links,
+                key = { it.id }
+            ) { link ->
+                CompactLinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
-                    onFavoriteClick = { onFavoriteClick(link) },
-                    onMoreClick = { onDeleteClick(link) }
+                    onFavoriteClick = { onFavoriteClick(link) }
                 )
             }
         }
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = 88.dp // Extra padding for FAB
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(links) { link ->
+            items(
+                items = links,
+                key = { it.id }
+            ) { link ->
                 LinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
@@ -214,19 +233,46 @@ fun LinksList(
 @Composable
 fun EmptyState(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+        // Empty state icon
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = RoundedCornerShape(60.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
-            text = "No links yet",
+            text = "No Links Yet",
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "Tap the + button to add your first link",
+            text = "Start saving your favorite links\nby tapping the + button below",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -248,7 +294,8 @@ fun AddLinkDialog(
                 label = { Text("URL") },
                 placeholder = { Text("https://example.com") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
             )
         },
         confirmButton = {

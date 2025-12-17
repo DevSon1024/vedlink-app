@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -20,7 +21,6 @@ import com.devson.vedlink.domain.model.Link
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LinkCard(
     link: Link,
@@ -33,8 +33,11 @@ fun LinkCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 3.dp
+        ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -42,36 +45,61 @@ fun LinkCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Image
-            if (!link.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = link.imageUrl,
-                    contentDescription = link.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // Placeholder when no image
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            // Image Section with Fixed Height
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+            ) {
+                if (!link.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = link.imageUrl,
+                        contentDescription = link.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    // Placeholder with gradient background
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+                }
+
+                // Favorite badge overlay
+                if (link.isFavorite) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Favorite",
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .size(16.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
-            // Content
+            // Content Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -83,38 +111,42 @@ fun LinkCard(
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Description
-                if (!link.description.isNullOrBlank()) {
-                    Text(
-                        text = link.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Domain and date
+                // Domain and Date Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = link.domain ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    // Domain
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = link.domain ?: "Unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
 
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Date
                     Text(
                         text = formatDate(link.createdAt),
                         style = MaterialTheme.typography.bodySmall,
@@ -124,23 +156,51 @@ fun LinkCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Actions
+                // Action Buttons Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onFavoriteClick) {
+                    // Favorite Button
+                    FilledTonalIconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = if (link.isFavorite)
+                                MaterialTheme.colorScheme.errorContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
                         Icon(
-                            imageVector = if (link.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (link.isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (link.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = if (link.isFavorite)
+                                Icons.Filled.Favorite
+                            else
+                                Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (link.isFavorite)
+                                "Remove from favorites"
+                            else
+                                "Add to favorites",
+                            modifier = Modifier.size(18.dp),
+                            tint = if (link.isFavorite)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    IconButton(onClick = onMoreClick) {
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // More Options Button
+                    FilledTonalIconButton(
+                        onClick = onMoreClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "More options",
+                            modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -151,6 +211,17 @@ fun LinkCard(
 }
 
 private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3_600_000 -> "${diff / 60_000}m ago"
+        diff < 86_400_000 -> "${diff / 3_600_000}h ago"
+        diff < 604_800_000 -> "${diff / 86_400_000}d ago"
+        else -> {
+            val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+            sdf.format(Date(timestamp))
+        }
+    }
 }
