@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.screens.favorites
+package com.devson.vedlink.ui.presentation.screens.favorites
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

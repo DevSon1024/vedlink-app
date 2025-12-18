@@ -110,25 +110,6 @@ fun HomeScreen(
                 }
             }
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                modifier = Modifier.size(64.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 12.dp
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Link",
-                    modifier = Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -141,7 +122,8 @@ fun HomeScreen(
             if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
                 StatsHeader(
                     totalLinks = uiState.links.size,
-                    favoriteCount = uiState.links.count { it.isFavorite }
+                    favoriteCount = uiState.links.count { it.isFavorite },
+                    onAddClick = { showAddDialog = true }
                 )
             }
 
@@ -202,22 +184,25 @@ fun HomeScreen(
 @Composable
 fun StatsHeader(
     totalLinks: Int,
-    favoriteCount: Int
+    favoriteCount: Int,
+    onAddClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(vertical = 12.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             StatItem(
                 label = "Total Links",
@@ -225,12 +210,23 @@ fun StatsHeader(
                 modifier = Modifier.weight(1f)
             )
 
-            VerticalDivider(
-                modifier = Modifier
-                    .height(48.dp)
-                    .padding(horizontal = 8.dp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-            )
+            // FAB in Center
+            FloatingActionButton(
+                onClick = onAddClick,
+                modifier = Modifier.size(56.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 10.dp
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Link",
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
 
             StatItem(
                 label = "Favorites",
