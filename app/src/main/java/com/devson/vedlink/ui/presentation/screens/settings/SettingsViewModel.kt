@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.screens.settings
+package com.devson.vedlink.ui.presentation.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

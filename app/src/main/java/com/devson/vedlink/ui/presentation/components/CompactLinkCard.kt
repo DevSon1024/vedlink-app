@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.components
+package com.devson.vedlink.ui.presentation.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

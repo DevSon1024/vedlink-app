@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.screens.details
+package com.devson.vedlink.ui.presentation.screens.details
 
 import android.content.Intent
 import android.net.Uri

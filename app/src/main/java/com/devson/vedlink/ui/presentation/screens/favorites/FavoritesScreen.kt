@@ -13,7 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.presentation.components.LinkCard
+import com.devson.vedlink.ui.presentation.components.LinkCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

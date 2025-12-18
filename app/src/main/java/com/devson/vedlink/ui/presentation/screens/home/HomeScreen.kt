@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.screens.home
+package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -7,11 +7,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.presentation.components.CompactLinkCard
-import com.devson.vedlink.presentation.components.LinkCard
-import com.devson.vedlink.presentation.components.VedLinkTopAppBar
+import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
+import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,11 +57,48 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             Column {
-                VedLinkTopAppBar(
-                    title = "VedLink",
-                    isGridView = uiState.isGridView,
-                    onSearchClick = { viewModel.toggleSearchActive() },
-                    onViewToggleClick = { viewModel.toggleViewMode() }
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "VedLink",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    actions = {
+                        // Refresh Button
+                        IconButton(onClick = { viewModel.refreshMetadata() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh metadata",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Search Button
+                        IconButton(onClick = { viewModel.toggleSearchActive() }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // View Toggle Button
+                        IconButton(onClick = { viewModel.toggleViewMode() }) {
+                            Icon(
+                                imageVector = if (uiState.isGridView)
+                                    Icons.Default.ViewList
+                                else
+                                    Icons.Default.GridView,
+                                contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
 
                 AnimatedVisibility(visible = uiState.isSearchActive) {
@@ -77,58 +113,77 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                modifier = Modifier.size(64.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 12.dp
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add Link"
+                    contentDescription = "Add Link",
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                uiState.links.isEmpty() -> {
-                    EmptyState(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                else -> {
-                    LinksList(
-                        links = uiState.links,
-                        isGridView = uiState.isGridView,
-                        onLinkClick = onNavigateToDetails,
-                        onFavoriteClick = { link ->
-                            viewModel.toggleFavorite(link.id, link.isFavorite)
-                        },
-                        onDeleteClick = { link ->
-                            showDeleteDialog = link
-                        }
-                    )
+            // Stats Header
+            if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
+                StatsHeader(
+                    totalLinks = uiState.links.size,
+                    favoriteCount = uiState.links.count { it.isFavorite }
+                )
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    uiState.links.isEmpty() -> {
+                        EmptyState(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    else -> {
+                        LinksList(
+                            links = uiState.links,
+                            isGridView = uiState.isGridView,
+                            onLinkClick = onNavigateToDetails,
+                            onFavoriteClick = { link ->
+                                viewModel.toggleFavorite(link.id, link.isFavorite)
+                            },
+                            onDeleteClick = { link ->
+                                showDeleteDialog = link
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 
     if (showAddDialog) {
-        AddLinkDialog(
+        EnhancedAddLinkBottomSheet(
+            recentLinks = uiState.links.take(10),
             onDismiss = { showAddDialog = false },
             onConfirm = { url ->
                 viewModel.saveLink(url)
                 showAddDialog = false
-            }
+            },
+            onAutoPaste = {}
         )
     }
 
@@ -140,6 +195,71 @@ fun HomeScreen(
                 viewModel.deleteLink(link)
                 showDeleteDialog = null
             }
+        )
+    }
+}
+
+@Composable
+fun StatsHeader(
+    totalLinks: Int,
+    favoriteCount: Int
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatItem(
+                label = "Total Links",
+                value = totalLinks.toString(),
+                modifier = Modifier.weight(1f)
+            )
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(48.dp)
+                    .padding(horizontal = 8.dp),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+            )
+
+            StatItem(
+                label = "Favorites",
+                value = favoriteCount.toString(),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun StatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
         )
     }
 }
@@ -189,7 +309,7 @@ fun LinksList(
                 start = 12.dp,
                 end = 12.dp,
                 top = 12.dp,
-                bottom = 88.dp // Extra padding for FAB
+                bottom = 88.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -208,10 +328,8 @@ fun LinksList(
     } else {
         LazyColumn(
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 12.dp,
-                bottom = 88.dp // Extra padding for FAB
+                horizontal = 16.dp,
+                vertical = 12.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -239,7 +357,6 @@ fun EmptyState(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Empty state icon
         Surface(
             modifier = Modifier.size(120.dp),
             shape = RoundedCornerShape(60.dp),
@@ -278,43 +395,6 @@ fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AddLinkDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var url by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Link") },
-        text = {
-            OutlinedTextField(
-                value = url,
-                onValueChange = { url = it },
-                label = { Text("URL") },
-                placeholder = { Text("https://example.com") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(url) },
-                enabled = url.isNotBlank()
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
 fun DeleteConfirmationDialog(
     linkTitle: String,
     onDismiss: () -> Unit,
@@ -338,6 +418,7 @@ fun DeleteConfirmationDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(16.dp)
     )
 }

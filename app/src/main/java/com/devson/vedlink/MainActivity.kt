@@ -13,10 +13,10 @@ import androidx.core.view.WindowCompat
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devson.vedlink.data.preferences.ThemePreferences
-import com.devson.vedlink.presentation.components.BottomNavBar
-import com.devson.vedlink.presentation.navigation.NavGraph
-import com.devson.vedlink.presentation.navigation.Screen
-import com.devson.vedlink.presentation.theme.VedLinkTheme
+import com.devson.vedlink.ui.presentation.components.ModernBottomNavBar
+import com.devson.vedlink.ui.presentation.navigation.NavGraph
+import com.devson.vedlink.ui.presentation.navigation.Screen
+import com.devson.vedlink.ui.presentation.theme.VedLinkTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Settings.route
                             )
                         ) {
-                            BottomNavBar(
+                            ModernBottomNavBar(
                                 currentRoute = currentRoute,
                                 onNavigate = { route ->
                                     navController.navigate(route) {

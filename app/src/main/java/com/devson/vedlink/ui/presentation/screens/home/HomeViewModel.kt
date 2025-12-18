@@ -1,12 +1,10 @@
-package com.devson.vedlink.presentation.screens.home
+package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
-import com.devson.vedlink.domain.usecase.GetLinksUseCase
-import com.devson.vedlink.domain.usecase.SaveLinkUseCase
-import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
+import com.devson.vedlink.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,10 +13,9 @@ import javax.inject.Inject
 data class HomeUiState(
     val links: List<Link> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val isGridView: Boolean = false,
+    val isSearchActive: Boolean = false,
     val searchQuery: String = "",
-    val isSearchActive: Boolean = false
+    val isGridView: Boolean = false
 )
 
 sealed class HomeUiEvent {
@@ -28,10 +25,12 @@ sealed class HomeUiEvent {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val getLinksUseCase: GetLinksUseCase,
+    private val getAllLinksUseCase: GetAllLinksUseCase,
     private val saveLinkUseCase: SaveLinkUseCase,
     private val deleteLinkUseCase: DeleteLinkUseCase,
-    private val toggleFavoriteUseCase: ToggleFavoriteUseCase
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val searchLinksUseCase: SearchLinksUseCase,
+    private val workManagerHelper: WorkManagerHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -48,62 +47,27 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            getLinksUseCase()
+            getAllLinksUseCase()
                 .catch { exception ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = exception.message
-                        )
-                    }
+                    _uiState.update { it.copy(isLoading = false) }
+                    _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Unknown error"))
                 }
                 .collect { links ->
                     _uiState.update {
                         it.copy(
-                            links = filterLinks(links, it.searchQuery),
-                            isLoading = false,
-                            error = null
+                            links = links,
+                            isLoading = false
                         )
                     }
                 }
         }
     }
 
-    fun onSearchQueryChange(query: String) {
-        _uiState.update {
-            it.copy(
-                searchQuery = query,
-                links = filterLinks(it.links, query)
-            )
-        }
-    }
-
-    fun toggleSearchActive() {
-        _uiState.update {
-            it.copy(
-                isSearchActive = !it.isSearchActive,
-                searchQuery = if (it.isSearchActive) "" else it.searchQuery
-            )
-        }
-    }
-
-    fun toggleViewMode() {
-        _uiState.update { it.copy(isGridView = !it.isGridView) }
-    }
-
     fun saveLink(url: String) {
-        if (url.isBlank()) {
-            viewModelScope.launch {
-                _uiEvent.emit(HomeUiEvent.ShowError("URL cannot be empty"))
-            }
-            return
-        }
-
-        // Show loading state
         viewModelScope.launch {
             saveLinkUseCase(url)
                 .onSuccess {
-                    _uiEvent.emit(HomeUiEvent.ShowSuccess("Link saved! Fetching details..."))
+                    _uiEvent.emit(HomeUiEvent.ShowSuccess("Link saved successfully"))
                 }
                 .onFailure { exception ->
                     _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Failed to save link"))
@@ -111,34 +75,62 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(linkId: Int, isFavorite: Boolean) {
-        viewModelScope.launch {
-            toggleFavoriteUseCase(linkId, !isFavorite)
-                .onFailure { exception ->
-                    _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Failed to update favorite"))
-                }
-        }
-    }
-
     fun deleteLink(link: Link) {
         viewModelScope.launch {
             deleteLinkUseCase(link)
-                .onSuccess {
-                    _uiEvent.emit(HomeUiEvent.ShowSuccess("Link deleted"))
+            _uiEvent.emit(HomeUiEvent.ShowSuccess("Link deleted"))
+        }
+    }
+
+    fun toggleFavorite(id: Int, isFavorite: Boolean) {
+        viewModelScope.launch {
+            toggleFavoriteUseCase(id, isFavorite)
+        }
+    }
+
+    fun toggleSearchActive() {
+        _uiState.update {
+            it.copy(
+                isSearchActive = !it.isSearchActive,
+                searchQuery = if (!it.isSearchActive) "" else it.searchQuery
+            )
+        }
+        if (!_uiState.value.isSearchActive) {
+            loadLinks()
+        }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        if (query.isNotEmpty()) {
+            searchLinks(query)
+        } else {
+            loadLinks()
+        }
+    }
+
+    private fun searchLinks(query: String) {
+        viewModelScope.launch {
+            searchLinksUseCase(query)
+                .catch { exception ->
+                    _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Search failed"))
                 }
-                .onFailure { exception ->
-                    _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Failed to delete link"))
+                .collect { links ->
+                    _uiState.update { it.copy(links = links) }
                 }
         }
     }
 
-    private fun filterLinks(links: List<Link>, query: String): List<Link> {
-        if (query.isBlank()) return links
+    fun toggleViewMode() {
+        _uiState.update { it.copy(isGridView = !it.isGridView) }
+    }
 
-        return links.filter { link ->
-            link.title?.contains(query, ignoreCase = true) == true ||
-                    link.url.contains(query, ignoreCase = true) ||
-                    link.description?.contains(query, ignoreCase = true) == true
+    fun refreshMetadata() {
+        viewModelScope.launch {
+            _uiState.value.links.forEach { link ->
+                workManagerHelper.enqueueLinkMetadataFetch(link.id)
+            }
+            _uiEvent.emit(HomeUiEvent.ShowSuccess("Refreshing metadata..."))
         }
     }
 }

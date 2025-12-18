@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.theme
+package com.devson.vedlink.ui.presentation.theme
 
 import android.app.Activity
 import android.os.Build

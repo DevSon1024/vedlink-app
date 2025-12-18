@@ -6,12 +6,7 @@ import javax.inject.Inject
 class ToggleFavoriteUseCase @Inject constructor(
     private val repository: LinkRepository
 ) {
-    suspend operator fun invoke(id: Int, isFavorite: Boolean): Result<Unit> {
-        return try {
-            repository.toggleFavorite(id, isFavorite)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend operator fun invoke(id: Int, isFavorite: Boolean) {
+        repository.toggleFavorite(id, !isFavorite)
     }
 }

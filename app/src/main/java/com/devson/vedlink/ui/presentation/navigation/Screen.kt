@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.navigation
+package com.devson.vedlink.ui.presentation.navigation
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")

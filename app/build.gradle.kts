@@ -25,10 +25,16 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
         }
     }
 
@@ -40,16 +46,31 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
+    }
     buildFeatures {
         compose = true
+        viewBinding = true
+        resValues = false
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "**/kotlin/**"
+            excludes += "**/*.kotlin_metadata"
+            excludes += "**/*.version"
+            excludes += "**/kotlin-tooling-metadata.json"
         }
+        jniLibs.useLegacyPackaging = true
     }
+    ndkVersion = "27.0.12077973"
 }
 
 dependencies {

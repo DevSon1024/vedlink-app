@@ -1,4 +1,4 @@
-package com.devson.vedlink.presentation.theme
+package com.devson.vedlink.ui.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
