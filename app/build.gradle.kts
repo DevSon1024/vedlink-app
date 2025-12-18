@@ -30,11 +30,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            manifestPlaceholders["appLabel"] = "VedLink"
         }
         debug {
             isMinifyEnabled = false
             isDebuggable = true
             applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "VedLink Beta"
         }
     }
 

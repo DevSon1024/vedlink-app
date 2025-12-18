@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- This will be overridden by build variants -->
     <string name="app_name">VedLink</string>
+    <!-- Other strings -->
 </resources>
