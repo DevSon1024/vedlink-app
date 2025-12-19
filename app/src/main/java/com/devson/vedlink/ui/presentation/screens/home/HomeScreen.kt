@@ -61,153 +61,164 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Saved Links",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    actions = {
-                        // Refresh Button
-                        IconButton(onClick = { viewModel.refreshMetadata() }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh metadata",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+    // Wrap everything in a Box to allow the Snackbar to float at the top
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                Column {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Saved Links",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                        }
-
-                        // Search Button
-                        IconButton(onClick = { viewModel.toggleSearchActive() }) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // View Toggle Button (Grid/List)
-                        IconButton(onClick = { viewModel.toggleViewMode() }) {
-                            Icon(
-                                imageVector = if (uiState.isGridView)
-                                    Icons.Default.ViewList
-                                else
-                                    Icons.Default.GridView,
-                                contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // More Options
-                        IconButton(onClick = { /* TODO: Show menu */ }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More options",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
-
-                AnimatedVisibility(visible = uiState.isSearchActive) {
-                    SearchBar(
-                        query = uiState.searchQuery,
-                        onQueryChange = { viewModel.onSearchQueryChange(it) },
-                        onClose = { viewModel.toggleSearchActive() }
-                    )
-                }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Stats Section
-                if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
-                    ItemCountSection(
-                        itemCount = uiState.links.size,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-
-                when {
-                    uiState.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    uiState.links.isEmpty() -> {
-                        EmptyState(
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    else -> {
-                        LinksList(
-                            links = uiState.links,
-                            isGridView = uiState.isGridView,
-                            onLinkClick = onNavigateToDetails,
-                            onFavoriteClick = { link ->
-                                viewModel.toggleFavorite(link.id, link.isFavorite)
-                            },
-                            onDeleteClick = { link ->
-                                showDeleteDialog = link
-                            },
-                            onCopyClick = { link ->
-                                copyToClipboard(context, link.url)
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "Link copied to clipboard",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                            },
-                            onShareClick = { link ->
-                                shareLink(context, link.url, link.title)
+                        },
+                        actions = {
+                            // Refresh Button
+                            IconButton(onClick = { viewModel.refreshMetadata() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh metadata",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+
+                            // Search Button
+                            IconButton(onClick = { viewModel.toggleSearchActive() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // View Toggle Button (Grid/List)
+                            IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                Icon(
+                                    imageVector = if (uiState.isGridView)
+                                        Icons.Default.ViewList
+                                    else
+                                        Icons.Default.GridView,
+                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // More Options
+                            IconButton(onClick = { /* TODO: Show menu */ }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    AnimatedVisibility(visible = uiState.isSearchActive) {
+                        SearchBar(
+                            query = uiState.searchQuery,
+                            onQueryChange = { viewModel.onSearchQueryChange(it) },
+                            onClose = { viewModel.toggleSearchActive() }
                         )
                     }
                 }
-            }
-
-            // Floating Action Button
-            if (!uiState.isSearchActive) {
-                FloatingActionButton(
-                    onClick = { showAddDialog = true },
+            },
+            // REMOVED: snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 100.dp)
-                        .size(64.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 12.dp
-                    )
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Add Link",
-                        modifier = Modifier.size(32.dp)
-                    )
+                    // Stats Section
+                    if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
+                        ItemCountSection(
+                            itemCount = uiState.links.size,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    when {
+                        uiState.isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        uiState.links.isEmpty() -> {
+                            EmptyState(
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        else -> {
+                            LinksList(
+                                links = uiState.links,
+                                isGridView = uiState.isGridView,
+                                onLinkClick = onNavigateToDetails,
+                                onFavoriteClick = { link ->
+                                    viewModel.toggleFavorite(link.id, link.isFavorite)
+                                },
+                                onDeleteClick = { link ->
+                                    showDeleteDialog = link
+                                },
+                                onCopyClick = { link ->
+                                    copyToClipboard(context, link.url)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Link copied to clipboard",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                },
+                                onShareClick = { link ->
+                                    shareLink(context, link.url, link.title)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Floating Action Button
+                if (!uiState.isSearchActive) {
+                    FloatingActionButton(
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 100.dp)
+                            .size(64.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 8.dp,
+                            pressedElevation = 12.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add Link",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
+
+        // ADDED: Position the SnackbarHost here to float at the top
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp) // Gap from the top of the screen
+        )
     }
 
     if (showAddDialog) {
