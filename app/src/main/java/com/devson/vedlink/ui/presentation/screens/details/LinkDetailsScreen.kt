@@ -1,7 +1,14 @@
 package com.devson.vedlink.ui.presentation.screens.details
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,17 +20,30 @@ import androidx.compose.runtime.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.request.ImageRequest
 import com.devson.vedlink.domain.model.Link
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LinkDetailsScreen(
     linkId: Int,
@@ -31,8 +51,14 @@ fun LinkDetailsScreen(
     viewModel: LinkDetailsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showMoreOptionsMenu by remember { mutableStateOf(false) }
+    var showImageDialog by remember { mutableStateOf(false) }
+    var imageLoaded by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(linkId) {
         viewModel.loadLink(linkId)
@@ -96,37 +122,85 @@ fun LinkDetailsScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Image Section
+                    // Image Section with Click & Download Support
                     if (!link.imageUrl.isNullOrBlank()) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(240.dp)
-                                .padding(16.dp),
+                                .padding(16.dp)
+                                .combinedClickable(
+                                    onClick = { showImageDialog = true },
+                                    onLongClick = {
+                                        scope.launch {
+                                            downloadImage(
+                                                context = context,
+                                                imageUrl = link.imageUrl,
+                                                fileName = link.title ?: "image"
+                                            )
+                                        }
+                                    }
+                                ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             AsyncImage(
-                                model = link.imageUrl,
+                                model = ImageRequest.Builder(context)
+                                    .data(link.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = link.title,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                onState = { state ->
+                                    if (state is AsyncImagePainter.State.Success) {
+                                        // Image loaded successfully
+                                    }
+                                }
                             )
                         }
                     }
 
-                    // Title
+                    // Title with Long Press to Copy
                     Text(
                         text = link.title ?: "No Title",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        style = MaterialTheme.typography.headlineSmall, // Reduced from headlineMedium
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    link.title?.let {
+                                        copyToClipboard(
+                                            clipboardManager,
+                                            context,
+                                            it,
+                                            "Title"
+                                        )
+                                    }
+                                }
+                            ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Domain
+                    // Domain with Long Press to Copy
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    link.domain?.let {
+                                        copyToClipboard(
+                                            clipboardManager,
+                                            context,
+                                            it,
+                                            "Domain"
+                                        )
+                                    }
+                                }
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -145,12 +219,23 @@ fun LinkDetailsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Description
+                    // Description with Long Press to Copy
                     if (!link.description.isNullOrBlank()) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp)
+                                .combinedClickable(
+                                    onClick = {},
+                                    onLongClick = {
+                                        copyToClipboard(
+                                            clipboardManager,
+                                            context,
+                                            link.description,
+                                            "Description"
+                                        )
+                                    }
+                                ),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
                             )
@@ -165,11 +250,22 @@ fun LinkDetailsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // URL Card
+                    // URL Card with Long Press to Copy
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    copyToClipboard(
+                                        clipboardManager,
+                                        context,
+                                        link.url,
+                                        "URL"
+                                    )
+                                }
+                            ),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
                         )
@@ -242,8 +338,7 @@ fun LinkDetailsScreen(
                         // Open in Browser
                         FilledTonalButton(
                             onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link.url))
-                                context.startActivity(intent)
+                                openInBrowser(context, link.url)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -259,12 +354,7 @@ fun LinkDetailsScreen(
                         // Share
                         OutlinedButton(
                             onClick = {
-                                val shareIntent = Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, link.url)
-                                    type = "text/plain"
-                                }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share link"))
+                                shareLink(context, link.url)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -284,6 +374,7 @@ fun LinkDetailsScreen(
         }
     }
 
+    // Delete Confirmation Dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -309,6 +400,75 @@ fun LinkDetailsScreen(
                 }
             }
         )
+    }
+
+    // Full Image Dialog with Download Option
+    if (showImageDialog && !uiState.link?.imageUrl.isNullOrBlank()) {
+        Dialog(onDismissRequest = { showImageDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 500.dp)
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(uiState.link?.imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Full Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                scope.launch {
+                                    uiState.link?.let { link ->
+                                        downloadImage(
+                                            context = context,
+                                            imageUrl = link.imageUrl!!,
+                                            fileName = link.title ?: "image"
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Download")
+                        }
+
+                        OutlinedButton(
+                            onClick = { showImageDialog = false },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Close")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -340,6 +500,109 @@ private fun MetadataRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+// Helper Functions
+
+private fun copyToClipboard(
+    clipboardManager: ClipboardManager,
+    context: Context,
+    text: String,
+    label: String
+) {
+    clipboardManager.setText(AnnotatedString(text))
+    Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
+}
+
+private fun openInBrowser(context: Context, url: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        // This will show chooser if multiple browsers are available
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(Intent.createChooser(intent, "Open with"))
+        } else {
+            Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Failed to open browser", Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun shareLink(context: Context, url: String) {
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, url)
+        type = "text/plain"
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Share link"))
+}
+
+private suspend fun downloadImage(
+    context: Context,
+    imageUrl: String,
+    fileName: String
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val url = URL(imageUrl)
+            val connection = url.openConnection()
+            connection.connect()
+
+            val inputStream = connection.getInputStream()
+
+            // Create a clean filename
+            val cleanFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+            val timestamp = System.currentTimeMillis()
+            val finalFileName = "${cleanFileName}_${timestamp}.jpg"
+
+            // Use MediaStore for Android 10+ or direct file access for older versions
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val values = android.content.ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, finalFileName)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val uri = context.contentResolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    values
+                )
+
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS
+                )
+                val file = File(downloadsDir, finalFileName)
+
+                FileOutputStream(file).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+
+            inputStream.close()
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    "Image downloaded to Downloads folder",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    "Failed to download image: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 }
