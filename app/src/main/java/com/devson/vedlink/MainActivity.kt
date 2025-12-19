@@ -40,10 +40,15 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                ) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0)
                     ) { paddingValues ->
                         NavGraph(
                             navController = navController,
@@ -65,6 +70,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
                             ModernBoxedBottomNavBar(
                                 currentRoute = currentRoute,

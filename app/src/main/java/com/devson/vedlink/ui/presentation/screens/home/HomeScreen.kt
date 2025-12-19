@@ -1,5 +1,9 @@
 package com.devson.vedlink.ui.presentation.screens.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,7 +11,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -23,6 +27,7 @@ import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +39,8 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<Link?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -60,7 +67,7 @@ fun HomeScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "VedLink",
+                            text = "Saved Links",
                             style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -84,7 +91,7 @@ fun HomeScreen(
                             )
                         }
 
-                        // View Toggle Button
+                        // View Toggle Button (Grid/List)
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
                                 imageVector = if (uiState.isGridView)
@@ -92,6 +99,15 @@ fun HomeScreen(
                                 else
                                     Icons.Default.GridView,
                                 contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // More Options
+                        IconButton(onClick = { /* TODO: Show menu */ }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -113,30 +129,32 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Stats Header
-            if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
-                StatsHeader(
-                    totalLinks = uiState.links.size,
-                    favoriteCount = uiState.links.count { it.isFavorite },
-                    onAddClick = { showAddDialog = true }
-                )
-            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Stats Section
+                if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
+                    ItemCountSection(
+                        itemCount = uiState.links.size,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
-            Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     uiState.isLoading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                     uiState.links.isEmpty() -> {
                         EmptyState(
-                            modifier = Modifier.align(Alignment.Center)
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                     else -> {
@@ -149,9 +167,44 @@ fun HomeScreen(
                             },
                             onDeleteClick = { link ->
                                 showDeleteDialog = link
+                            },
+                            onCopyClick = { link ->
+                                copyToClipboard(context, link.url)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Link copied to clipboard",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            },
+                            onShareClick = { link ->
+                                shareLink(context, link.url, link.title)
                             }
                         )
                     }
+                }
+            }
+
+            // Floating Action Button
+            if (!uiState.isSearchActive) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 100.dp)
+                        .size(64.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 12.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Add Link",
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
             }
         }
@@ -171,7 +224,6 @@ fun HomeScreen(
 
     showDeleteDialog?.let { link ->
         DeleteConfirmationDialog(
-            linkTitle = link.title ?: "this link",
             onDismiss = { showDeleteDialog = null },
             onConfirm = {
                 viewModel.deleteLink(link)
@@ -182,80 +234,19 @@ fun HomeScreen(
 }
 
 @Composable
-fun StatsHeader(
-    totalLinks: Int,
-    favoriteCount: Int,
-    onAddClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StatItem(
-                label = "Total Links",
-                value = totalLinks.toString(),
-                modifier = Modifier.weight(1f)
-            )
-
-            // FAB in Center
-            FloatingActionButton(
-                onClick = onAddClick,
-                modifier = Modifier.size(56.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 10.dp
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "Add Link",
-                    modifier = Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            StatItem(
-                label = "Favorites",
-                value = favoriteCount.toString(),
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun StatItem(
-    label: String,
-    value: String,
+fun ItemCountSection(
+    itemCount: Int,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            text = "$itemCount items in total",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -273,6 +264,12 @@ fun SearchBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         placeholder = { Text("Search links...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
         trailingIcon = {
             IconButton(onClick = onClose) {
                 Icon(
@@ -296,16 +293,18 @@ fun LinksList(
     isGridView: Boolean,
     onLinkClick: (Int) -> Unit,
     onFavoriteClick: (Link) -> Unit,
-    onDeleteClick: (Link) -> Unit
+    onDeleteClick: (Link) -> Unit,
+    onCopyClick: (Link) -> Unit,
+    onShareClick: (Link) -> Unit
 ) {
     if (isGridView) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
-                top = 12.dp,
-                bottom = 88.dp
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 120.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -317,17 +316,22 @@ fun LinksList(
                 CompactLinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
-                    onFavoriteClick = { onFavoriteClick(link) }
+                    onFavoriteClick = { onFavoriteClick(link) },
+                    onCopyClick = { onCopyClick(link) },
+                    onShareClick = { onShareClick(link) },
+                    onDeleteClick = { onDeleteClick(link) }
                 )
             }
         }
     } else {
         LazyColumn(
             contentPadding = PaddingValues(
-                horizontal = 16.dp,
-                vertical = 12.dp
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 120.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(
                 items = links,
@@ -337,7 +341,10 @@ fun LinksList(
                     link = link,
                     onClick = { onLinkClick(link.id) },
                     onFavoriteClick = { onFavoriteClick(link) },
-                    onMoreClick = { onDeleteClick(link) }
+                    onMoreClick = { onDeleteClick(link) },
+                    onCopyClick = { onCopyClick(link) },
+                    onShareClick = { onShareClick(link) },
+                    onDeleteClick = { onDeleteClick(link) }
                 )
             }
         }
@@ -348,7 +355,7 @@ fun LinksList(
 fun EmptyState(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -392,19 +399,38 @@ fun EmptyState(modifier: Modifier = Modifier) {
 
 @Composable
 fun DeleteConfirmationDialog(
-    linkTitle: String,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Link") },
-        text = { Text("Are you sure you want to delete \"$linkTitle\"?") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(28.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Delete Link?",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to delete this link? This action cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
                 )
             ) {
                 Text("Delete")
@@ -415,6 +441,22 @@ fun DeleteConfirmationDialog(
                 Text("Cancel")
             }
         },
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(20.dp)
     )
+}
+
+// Helper functions
+private fun copyToClipboard(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = ClipData.newPlainText("Link", text)
+    clipboard.setPrimaryClip(clip)
+}
+
+private fun shareLink(context: Context, url: String, title: String?) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, url)
+        putExtra(Intent.EXTRA_TITLE, title ?: "Check out this link")
+    }
+    context.startActivity(Intent.createChooser(intent, "Share link via"))
 }

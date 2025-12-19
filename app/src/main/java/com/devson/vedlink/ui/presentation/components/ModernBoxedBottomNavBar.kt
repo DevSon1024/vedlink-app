@@ -17,7 +17,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.devson.vedlink.ui.presentation.navigation.Screen
@@ -30,23 +29,24 @@ fun ModernBoxedBottomNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(90.dp)
+            .wrapContentHeight()
             .background(Color.Transparent)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
-                        )
-                    )
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = RoundedCornerShape(30.dp),
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .clip(RoundedCornerShape(30.dp))
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                )
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -61,7 +61,7 @@ fun ModernBoxedBottomNavBar(
             ModernBoxedNavItem(
                 icon = Icons.Outlined.FavoriteBorder,
                 selectedIcon = Icons.Filled.Favorite,
-                label = "Favorites",
+                label = "Links",
                 isSelected = currentRoute == Screen.Favorites.route,
                 onClick = { onNavigate(Screen.Favorites.route) }
             )
@@ -75,9 +75,9 @@ fun ModernBoxedBottomNavBar(
             )
 
             ModernBoxedNavItem(
-                icon = Icons.Outlined.Settings,
-                selectedIcon = Icons.Filled.Settings,
-                label = "Settings",
+                icon = Icons.Outlined.MoreHoriz,
+                selectedIcon = Icons.Filled.MoreHoriz,
+                label = "More",
                 isSelected = currentRoute == Screen.Settings.route,
                 onClick = { onNavigate(Screen.Settings.route) }
             )
@@ -93,83 +93,55 @@ private fun ModernBoxedNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.15f else 0.95f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
 
     val containerColor by animateColorAsState(
         targetValue = if (isSelected)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+            MaterialTheme.colorScheme.primary
         else
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            Color.Transparent,
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "container"
     )
 
     val contentColor by animateColorAsState(
         targetValue = if (isSelected)
-            MaterialTheme.colorScheme.primary
+            MaterialTheme.colorScheme.onPrimary
         else
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(durationMillis = 300),
         label = "content"
-    )
-
-    val elevation by animateDpAsState(
-        targetValue = if (isSelected) 8.dp else 2.dp,
-        animationSpec = tween(durationMillis = 300),
-        label = "elevation"
-    )
-
-    val rotation by animateFloatAsState(
-        targetValue = if (isSelected) 360f else 0f,
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-        label = "rotation"
     )
 
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .scale(scale)
-            .shadow(elevation, RoundedCornerShape(18.dp))
-            .size(width = 62.dp, height = 52.dp),
-        shape = RoundedCornerShape(18.dp),
+            .height(50.dp),
+        shape = RoundedCornerShape(20.dp),
         color = containerColor
     ) {
-        Box(
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(6.dp)
-            ) {
-                Icon(
-                    imageVector = if (isSelected) selectedIcon else icon,
-                    contentDescription = label,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .graphicsLayer {
-                            rotationZ = rotation
-                        },
-                    tint = contentColor
-                )
+            Icon(
+                imageVector = if (isSelected) selectedIcon else icon,
+                contentDescription = label,
+                modifier = Modifier.size(24.dp),
+                tint = contentColor
+            )
 
-                AnimatedVisibility(
-                    visible = isSelected,
-                    enter = fadeIn(tween(200)) + expandVertically(),
-                    exit = fadeOut(tween(200)) + shrinkVertically()
-                ) {
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = fadeIn(tween(200)) + expandHorizontally(),
+                exit = fadeOut(tween(200)) + shrinkHorizontally()
+            ) {
+                Row {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = contentColor,
-                        modifier = Modifier.padding(top = 2.dp)
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor
                     )
                 }
             }
