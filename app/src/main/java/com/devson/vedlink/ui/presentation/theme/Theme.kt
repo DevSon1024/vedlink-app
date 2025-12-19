@@ -10,7 +10,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -90,11 +89,9 @@ fun VedLinkTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
-            // Make status bar transparent
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = Color.Transparent.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
 
-            // Set status bar content color (dark/light icons)
             val windowInsetsController = WindowCompat.getInsetsController(window, view)
             windowInsetsController.isAppearanceLightStatusBars = !darkTheme
             windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
