@@ -2,6 +2,7 @@ package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.*
@@ -30,7 +31,8 @@ class HomeViewModel @Inject constructor(
     private val deleteLinkUseCase: DeleteLinkUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val searchLinksUseCase: SearchLinksUseCase,
-    private val workManagerHelper: WorkManagerHelper
+    private val workManagerHelper: WorkManagerHelper,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -41,6 +43,16 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadLinks()
+        loadPreferences()
+    }
+
+    private fun loadPreferences() {
+        viewModelScope.launch {
+            // Load view mode preference
+            themePreferences.isGridView.collect { isGrid ->
+                _uiState.update { it.copy(isGridView = isGrid) }
+            }
+        }
     }
 
     private fun loadLinks() {
@@ -122,7 +134,12 @@ class HomeViewModel @Inject constructor(
     }
 
     fun toggleViewMode() {
-        _uiState.update { it.copy(isGridView = !it.isGridView) }
+        viewModelScope.launch {
+            val newGridValue = !_uiState.value.isGridView
+            _uiState.update { it.copy(isGridView = newGridValue) }
+            // Persist the preference
+            themePreferences.setGridView(newGridValue)
+        }
     }
 
     fun refreshMetadata() {
