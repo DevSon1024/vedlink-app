@@ -6,6 +6,10 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+val splitApks = !project.hasProperty("noSplits") && !gradle.startParameter.taskNames.any {
+    it.contains("debug", ignoreCase = true)
+}
+
 android {
     namespace = "com.devson.vedlink"
     compileSdk = 35
@@ -19,6 +23,12 @@ android {
 
         vectorDrawables {
             useSupportLibrary = true
+        }
+        if (!splitApks) {
+            // For debug builds - only include device ABI for faster builds
+            ndk {
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
 
@@ -37,6 +47,17 @@ android {
             isDebuggable = true
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "VedLink Beta"
+        }
+    }
+
+    if (splitApks) {
+        splits {
+            abi {
+                isEnable = true
+                reset()
+                include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                isUniversalApk = false
+            }
         }
     }
 
