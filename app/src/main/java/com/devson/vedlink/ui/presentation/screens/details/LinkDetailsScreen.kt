@@ -15,9 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,9 +56,7 @@ fun LinkDetailsScreen(
     val scope = rememberCoroutineScope()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showMoreOptionsMenu by remember { mutableStateOf(false) }
     var showImageDialog by remember { mutableStateOf(false) }
-    var imageLoaded by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(linkId) {
         viewModel.loadLink(linkId)
@@ -122,13 +120,13 @@ fun LinkDetailsScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Image Section with Click & Download Support
+                    // Image Section: Updated to show full image (vertical/horizontal/square)
                     if (!link.imageUrl.isNullOrBlank()) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(240.dp)
                                 .padding(16.dp)
+                                .wrapContentHeight() // Allow card to grow with image
                                 .combinedClickable(
                                     onClick = { showImageDialog = true },
                                     onLongClick = {
@@ -149,11 +147,13 @@ fun LinkDetailsScreen(
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = link.title,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 200.dp, max = 500.dp), // Flexible height constraints
+                                contentScale = ContentScale.FillWidth, // Fill width, maintain aspect ratio
                                 onState = { state ->
                                     if (state is AsyncImagePainter.State.Success) {
-                                        // Image loaded successfully
+                                        // Image loaded
                                     }
                                 }
                             )
@@ -163,7 +163,7 @@ fun LinkDetailsScreen(
                     // Title with Long Press to Copy
                     Text(
                         text = link.title ?: "No Title",
-                        style = MaterialTheme.typography.headlineSmall, // Reduced from headlineMedium
+                        style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .combinedClickable(
@@ -415,7 +415,7 @@ fun LinkDetailsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 500.dp)
+                            .heightIn(max = 600.dp) // Increased max height for dialog
                     ) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
@@ -426,7 +426,7 @@ fun LinkDetailsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                            contentScale = ContentScale.Fit
+                            contentScale = ContentScale.FillWidth // Full width
                         )
                     }
 

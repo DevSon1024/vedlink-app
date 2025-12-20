@@ -1,12 +1,20 @@
 package com.devson.vedlink.ui.presentation.screens.settings
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.repository.LinkRepository
+import com.devson.vedlink.domain.model.Link
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -14,6 +22,13 @@ data class SettingsUiState(
     val favoriteLinks: Int = 0,
     val isDarkMode: Boolean = false,
     val autoFetchMetadata: Boolean = true
+)
+
+// Data class for Backup Structure
+data class BackupData(
+    val version: Int = 1,
+    val timestamp: Long = System.currentTimeMillis(),
+    val links: List<Link>
 )
 
 @HiltViewModel
@@ -24,6 +39,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val _toastMessage = MutableSharedFlow<String>()
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     init {
         loadStats()
@@ -62,6 +80,125 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val newValue = !_uiState.value.autoFetchMetadata
             themePreferences.setAutoFetchMetadata(newValue)
+        }
+    }
+
+    fun clearCache(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                context.cacheDir.deleteRecursively()
+                context.codeCacheDir.deleteRecursively()
+                withContext(Dispatchers.Main) {
+                    _toastMessage.emit("Cache cleared successfully")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _toastMessage.emit("Failed to clear cache")
+                }
+            }
+        }
+    }
+    data class BackupLinkItem(
+        val url: String,
+        val isFavorite: Boolean
+    )
+
+    // The root backup structure
+    data class BackupData(
+        val version: Int = 1,
+        val timestamp: Long = System.currentTimeMillis(),
+        val links: List<BackupLinkItem>
+    )
+
+    fun exportData(context: Context, uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Get all links from repository
+                val allLinks = repository.getAllLinks().first()
+
+                // Map to simplified structure (Only URL and isFavorite)
+                val simpleLinks = allLinks.map { link ->
+                    BackupLinkItem(
+                        url = link.url,
+                        isFavorite = link.isFavorite
+                    )
+                }
+
+                val backupData = BackupData(links = simpleLinks)
+
+                // Convert to JSON
+                val gson = Gson()
+                val jsonString = gson.toJson(backupData)
+
+                // Write to file
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(jsonString.toByteArray())
+                }
+
+                withContext(Dispatchers.Main) {
+                    _toastMessage.emit("Backup saved successfully")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    _toastMessage.emit("Export failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun importData(context: Context, uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val stringBuilder = StringBuilder()
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                        var line: String? = reader.readLine()
+                        while (line != null) {
+                            stringBuilder.append(line)
+                            line = reader.readLine()
+                        }
+                    }
+                }
+
+                val gson = Gson()
+                val backupData = gson.fromJson(stringBuilder.toString(), BackupData::class.java)
+
+                if (backupData.links.isNotEmpty()) {
+                    var count = 0
+                    backupData.links.forEach { item ->
+                        // Create a fresh Link object with only URL and Favorite status
+                        // ID is 0 to let Room auto-generate it
+                        // Metadata (title, description, image) is null, to be fetched locally
+                        val newLink = Link(
+                            url = item.url,
+                            isFavorite = item.isFavorite,
+                            title = null,
+                            description = null,
+                            imageUrl = null,
+                            domain = null // Domain extraction usually happens on fetch
+                        )
+
+                        // Insert handles duplicates based on your Repository logic (usually ignores or updates)
+                        repository.insertLink(newLink)
+                        count++
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        _toastMessage.emit("Restored $count links. Refresh to fetch metadata.")
+                        loadStats()
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        _toastMessage.emit("No links found in backup file")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    _toastMessage.emit("Import failed: ${e.message}")
+                }
+            }
         }
     }
 }

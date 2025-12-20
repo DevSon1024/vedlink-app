@@ -9,10 +9,17 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class FolderItem(
+    val domain: String,
+    val linkCount: Int,
+    val favicon: String? = null
+)
+
 data class FoldersUiState(
     val folders: List<FolderItem> = emptyList(),
     val linksByDomain: Map<String, List<Link>> = emptyMap(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isGridView: Boolean = true // Default to Grid View
 )
 
 @HiltViewModel
@@ -53,5 +60,9 @@ class FoldersViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun toggleViewMode() {
+        _uiState.update { it.copy(isGridView = !it.isGridView) }
     }
 }

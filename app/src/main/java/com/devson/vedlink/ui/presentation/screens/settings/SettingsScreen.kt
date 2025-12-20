@@ -1,5 +1,10 @@
 package com.devson.vedlink.ui.presentation.screens.settings
 
+import android.content.Context
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,8 +16,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +31,30 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Export Launcher
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.exportData(context, it) }
+    }
+
+    // Import Launcher
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importData(context, it) }
+    }
+
+    // Observe side effects (Toast messages)
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -34,7 +69,8 @@ fun SettingsScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -116,23 +152,28 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.FileDownload,
                 title = "Export Data",
-                subtitle = "Export all links to JSON",
-                onClick = { /* TODO: Implement export */ }
+                subtitle = "Backup links to JSON",
+                onClick = {
+                    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                    exportLauncher.launch("vedlink_backup_$timeStamp.json")
+                }
             )
 
             SettingsItem(
                 icon = Icons.Default.FileUpload,
                 title = "Import Data",
-                subtitle = "Import links from file",
-                onClick = { /* TODO: Implement import */ }
+                subtitle = "Restore links from backup",
+                onClick = {
+                    importLauncher.launch(arrayOf("application/json"))
+                }
             )
 
             SettingsItem(
                 icon = Icons.Default.DeleteSweep,
-                title = "Clear All Data",
-                subtitle = "Delete all saved links",
-                onClick = { /* TODO: Implement clear all */ },
-                tint = MaterialTheme.colorScheme.error
+                title = "Clear Cache",
+                subtitle = "Free up space by clearing app cache",
+                onClick = { viewModel.clearCache(context) },
+                tint = MaterialTheme.colorScheme.primary
             )
 
             // About Section
@@ -173,7 +214,7 @@ fun SettingsItem(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Card(
         modifier = Modifier
