@@ -24,11 +24,17 @@ data class SettingsUiState(
     val autoFetchMetadata: Boolean = true
 )
 
-// Data class for Backup Structure
+// Simplified item for backup (only essential data)
+data class BackupLinkItem(
+    val url: String,
+    val isFavorite: Boolean
+)
+
+// The root backup structure
 data class BackupData(
     val version: Int = 1,
     val timestamp: Long = System.currentTimeMillis(),
-    val links: List<Link>
+    val links: List<BackupLinkItem>
 )
 
 @HiltViewModel
@@ -98,17 +104,6 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-    data class BackupLinkItem(
-        val url: String,
-        val isFavorite: Boolean
-    )
-
-    // The root backup structure
-    data class BackupData(
-        val version: Int = 1,
-        val timestamp: Long = System.currentTimeMillis(),
-        val links: List<BackupLinkItem>
-    )
 
     fun exportData(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -167,19 +162,18 @@ class SettingsViewModel @Inject constructor(
                 if (backupData.links.isNotEmpty()) {
                     var count = 0
                     backupData.links.forEach { item ->
-                        // Create a fresh Link object with only URL and Favorite status
-                        // ID is 0 to let Room auto-generate it
-                        // Metadata (title, description, image) is null, to be fetched locally
+                        // Extract domain immediately during import
+                        val domain = extractDomain(item.url)
+
                         val newLink = Link(
                             url = item.url,
                             isFavorite = item.isFavorite,
                             title = null,
                             description = null,
                             imageUrl = null,
-                            domain = null // Domain extraction usually happens on fetch
+                            domain = domain // Set extracted domain
                         )
 
-                        // Insert handles duplicates based on your Repository logic (usually ignores or updates)
                         repository.insertLink(newLink)
                         count++
                     }
@@ -198,6 +192,27 @@ class SettingsViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _toastMessage.emit("Import failed: ${e.message}")
                 }
+            }
+        }
+    }
+
+    // Helper to extract clean domain from URL
+    private fun extractDomain(url: String): String? {
+        return try {
+            val uri = java.net.URI(url)
+            val host = uri.host
+            if (host != null && host.startsWith("www.")) {
+                host.substring(4)
+            } else {
+                host
+            }
+        } catch (e: Exception) {
+            // Fallback for simple parsing if URI fails
+            try {
+                val domain = url.substringAfter("://").substringBefore("/")
+                if (domain.startsWith("www.")) domain.substring(4) else domain
+            } catch (e2: Exception) {
+                null
             }
         }
     }

@@ -1,12 +1,10 @@
 package com.devson.vedlink.data.worker
 
 import android.content.Context
-import android.net.Uri
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.devson.vedlink.data.local.dao.LinkDao
-import com.devson.vedlink.data.local.entity.LinkEntity
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +31,19 @@ class MetadataFetchWorker @AssistedInject constructor(
             // Fetch metadata
             val metadata = fetchMetadata(link.url)
 
-            // Update link with metadata
+            // Calculate domain if missing
+            val domain = if (link.domain.isNullOrBlank()) {
+                extractDomain(link.url)
+            } else {
+                link.domain
+            }
+
+            // Update link with metadata and domain
             val updatedLink = link.copy(
                 title = metadata.title ?: link.title,
                 description = metadata.description ?: link.description,
                 imageUrl = metadata.imageUrl ?: link.imageUrl,
+                domain = domain,
                 updatedAt = System.currentTimeMillis()
             )
 
@@ -86,6 +92,26 @@ class MetadataFetchWorker @AssistedInject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
                 LinkMetadata()
+            }
+        }
+    }
+
+    private fun extractDomain(url: String): String? {
+        return try {
+            val uri = java.net.URI(url)
+            val host = uri.host
+            if (host != null && host.startsWith("www.")) {
+                host.substring(4)
+            } else {
+                host
+            }
+        } catch (e: Exception) {
+            // Fallback
+            try {
+                val domain = url.substringAfter("://").substringBefore("/")
+                if (domain.startsWith("www.")) domain.substring(4) else domain
+            } catch (e2: Exception) {
+                null
             }
         }
     }
