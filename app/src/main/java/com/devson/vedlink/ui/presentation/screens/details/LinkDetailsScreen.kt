@@ -126,7 +126,7 @@ fun LinkDetailsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .wrapContentHeight() // Allow card to grow with image
+                                .wrapContentHeight()
                                 .combinedClickable(
                                     onClick = { showImageDialog = true },
                                     onLongClick = {
@@ -149,8 +149,8 @@ fun LinkDetailsScreen(
                                 contentDescription = link.title,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 200.dp, max = 500.dp), // Flexible height constraints
-                                contentScale = ContentScale.FillWidth, // Fill width, maintain aspect ratio
+                                    .heightIn(min = 200.dp, max = 500.dp),
+                                contentScale = ContentScale.FillWidth,
                                 onState = { state ->
                                     if (state is AsyncImagePainter.State.Success) {
                                         // Image loaded
