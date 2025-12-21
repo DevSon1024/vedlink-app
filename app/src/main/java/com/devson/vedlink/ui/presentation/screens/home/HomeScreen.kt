@@ -1,9 +1,5 @@
 package com.devson.vedlink.ui.presentation.screens.home
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -30,6 +26,7 @@ import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.devson.vedlink.ui.presentation.helper.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -660,41 +657,4 @@ fun MultiDeleteConfirmationDialog(
         },
         shape = RoundedCornerShape(20.dp)
     )
-}
-
-// Helper functions
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("Link", text)
-    clipboard.setPrimaryClip(clip)
-}
-
-private fun shareLink(context: Context, url: String, title: String?) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, url)
-        putExtra(Intent.EXTRA_TITLE, title ?: "Check out this link")
-    }
-    context.startActivity(Intent.createChooser(intent, "Share link via"))
-}
-
-private fun shareMultipleLinks(context: Context, links: List<Link>) {
-    val shareText = buildString {
-        appendLine("Check out these links:")
-        appendLine()
-        links.forEach { link ->
-            if (!link.title.isNullOrBlank()) {
-                appendLine(link.title)
-            }
-            appendLine(link.url)
-            appendLine()
-        }
-    }
-
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, shareText)
-        putExtra(Intent.EXTRA_TITLE, "Shared Links from VedLink")
-    }
-    context.startActivity(Intent.createChooser(intent, "Share links via"))
 }
