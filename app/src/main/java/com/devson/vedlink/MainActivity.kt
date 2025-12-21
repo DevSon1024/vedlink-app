@@ -33,9 +33,18 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = false)
+            // Collect all theme preferences
+            val themeMode by themePreferences.themeMode.collectAsState(initial = 0)
+            val colorScheme by themePreferences.colorScheme.collectAsState(initial = 0)
+            val dynamicColor by themePreferences.dynamicColor.collectAsState(initial = false)
+            val amoledMode by themePreferences.amoledMode.collectAsState(initial = false)
 
-            VedLinkTheme(darkTheme = isDarkMode) {
+            VedLinkTheme(
+                themeMode = themeMode,
+                colorSchemeIndex = colorScheme,
+                useDynamicColor = dynamicColor,
+                useAmoledMode = amoledMode
+            ) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route

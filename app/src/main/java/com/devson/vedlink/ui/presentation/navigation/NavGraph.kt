@@ -12,6 +12,7 @@ import com.devson.vedlink.ui.presentation.screens.favorites.FavoritesScreen
 import com.devson.vedlink.ui.presentation.screens.folders.FoldersScreen
 import com.devson.vedlink.ui.presentation.screens.home.HomeScreen
 import com.devson.vedlink.ui.presentation.screens.settings.SettingsScreen
+import com.devson.vedlink.ui.presentation.screens.lookandfeel.LookAndFeelScreen
 
 @Composable
 fun NavGraph(
@@ -42,6 +43,18 @@ fun NavGraph(
 
         composable(Screen.About.route) {
             AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                onNavigateToLookAndFeel = { navController.navigate(Screen.LookAndFeel.route) }
+            )
+        }
+
+        composable(Screen.LookAndFeel.route) {
+            LookAndFeelScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

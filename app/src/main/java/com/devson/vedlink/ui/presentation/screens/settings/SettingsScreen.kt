@@ -25,12 +25,14 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material.icons.filled.Palette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    onNavigateToAbout: () -> Unit = {}
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToLookAndFeel: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -135,6 +137,12 @@ fun SettingsScreen(
                 subtitle = "Use dark theme",
                 checked = uiState.isDarkMode,
                 onCheckedChange = { viewModel.toggleDarkMode() }
+            )
+            SettingsItem(
+                icon = Icons.Default.Palette,
+                title = "Look & feel",
+                subtitle = "Customize theme and colors",
+                onClick = onNavigateToLookAndFeel
             )
 
             // Storage Section
