@@ -120,12 +120,13 @@ fun LinkDetailsScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Image Section: Updated to show full image (vertical/horizontal/square)
+                    // Image Section
                     if (!link.imageUrl.isNullOrBlank()) {
+                        SectionHeader("Preview")
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp) // Adjusted padding
                                 .wrapContentHeight()
                                 .combinedClickable(
                                     onClick = { showImageDialog = true },
@@ -161,11 +162,12 @@ fun LinkDetailsScreen(
                     }
 
                     // Title with Long Press to Copy
+                    SectionHeader("Title")
                     Text(
                         text = link.title ?: "No Title",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier
-                            .padding(horizontal = 12.dp)
+                            .padding(horizontal = 16.dp) // Aligned with header
                             .combinedClickable(
                                 onClick = {},
                                 onLongClick = {
@@ -182,9 +184,10 @@ fun LinkDetailsScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Domain with Long Press to Copy
+                    SectionHeader("Domain")
                     Row(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
@@ -221,6 +224,7 @@ fun LinkDetailsScreen(
 
                     // Description with Long Press to Copy
                     if (!link.description.isNullOrBlank()) {
+                        SectionHeader("Description")
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -250,7 +254,7 @@ fun LinkDetailsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // URL Card with Long Press to Copy
+                    // URL Card (Kept as is, no header requested, but useful context)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -296,6 +300,7 @@ fun LinkDetailsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Metadata
+                    SectionHeader("Metadata")
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -335,7 +340,7 @@ fun LinkDetailsScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Open in Browser
+                        // Open in Browser (Simplified)
                         FilledTonalButton(
                             onClick = {
                                 openInBrowser(context, link.url)
@@ -415,7 +420,7 @@ fun LinkDetailsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 600.dp) // Increased max height for dialog
+                            .heightIn(max = 600.dp)
                     ) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
@@ -426,7 +431,7 @@ fun LinkDetailsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                            contentScale = ContentScale.FillWidth // Full width
+                            contentScale = ContentScale.FillWidth
                         )
                     }
 
@@ -470,6 +475,18 @@ fun LinkDetailsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
 }
 
 @Composable
@@ -519,14 +536,10 @@ private fun copyToClipboard(
 private fun openInBrowser(context: Context, url: String) {
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        // This will show chooser if multiple browsers are available
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(Intent.createChooser(intent, "Open with"))
-        } else {
-            Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
-        }
+        // Simplified: Start the intent directly. Android will handle app selection (if installed) or browser.
+        context.startActivity(intent)
     } catch (e: Exception) {
-        Toast.makeText(context, "Failed to open browser", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Failed to open link", Toast.LENGTH_SHORT).show()
     }
 }
 
