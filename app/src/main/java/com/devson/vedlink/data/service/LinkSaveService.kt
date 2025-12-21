@@ -2,7 +2,9 @@ package com.devson.vedlink.data.service
 
 import android.app.Service
 import android.content.Intent
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.widget.Toast
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +22,7 @@ class LinkSaveService : Service() {
     lateinit var saveLinkUseCase: SaveLinkUseCase
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -27,41 +30,62 @@ class LinkSaveService : Service() {
         val url = intent?.getStringExtra(EXTRA_URL)
 
         if (!url.isNullOrBlank()) {
-            Toast.makeText(this, "Saving link...", Toast.LENGTH_SHORT).show()
-
             serviceScope.launch {
-                saveLinkUseCase(url)
-                    .onSuccess {
-                        launch(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@LinkSaveService,
-                                "Link saved!",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                    .onFailure { error ->
-                        launch(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@LinkSaveService,
-                                "Failed: ${error.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                try {
+                    // Save link in background
+                    val result = saveLinkUseCase(url)
 
-                stopSelf(startId)
+                    // Show toast and ensure it displays before stopping service
+                    result
+                        .onSuccess {
+                            showToastAndStop("Link saved", startId)
+                        }
+                        .onFailure { error ->
+                            showToastAndStop(
+                                "Failed to save: ${error.message ?: "Unknown error"}",
+                                startId,
+                                isError = true
+                            )
+                        }
+                } catch (e: Exception) {
+                    // Handle any unexpected exceptions
+                    showToastAndStop(
+                        "Failed to save: ${e.message ?: "Unknown error"}",
+                        startId,
+                        isError = true
+                    )
+                }
             }
         } else {
-            stopSelf(startId)
+            // Show error if URL is empty
+            showToastAndStop("No link to save", startId)
         }
 
         return START_NOT_STICKY
     }
 
+    private fun showToastAndStop(message: String, startId: Int, isError: Boolean = false) {
+        mainHandler.post {
+            // Create and show toast
+            val toast = Toast.makeText(
+                this@LinkSaveService,
+                message,
+                if (isError) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+            )
+            toast.show()
+
+            // Delay service stop to ensure toast is displayed
+            // Toast.LENGTH_SHORT is ~2000ms, we give it 500ms to ensure it shows
+            mainHandler.postDelayed({
+                stopSelf(startId)
+            }, 500)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+        mainHandler.removeCallbacksAndMessages(null)
     }
 
     companion object {
