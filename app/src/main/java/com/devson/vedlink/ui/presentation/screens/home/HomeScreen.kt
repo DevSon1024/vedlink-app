@@ -123,7 +123,7 @@ fun HomeScreen(
                             },
                             onDelete = {
                                 val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
-                                showDeleteDialog = selectedLinksData.firstOrNull() // Trigger delete dialog
+                                showDeleteDialog = selectedLinksData.firstOrNull()
                             }
                         )
                     } else {
@@ -160,14 +160,6 @@ fun HomeScreen(
                                         else
                                             Icons.Default.GridView,
                                         contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                IconButton(onClick = { /* TODO: Show menu */ }) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More options",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -325,59 +317,6 @@ fun HomeScreen(
             )
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SelectionTopBar(
-    selectedCount: Int,
-    onClose: () -> Unit,
-    onShare: () -> Unit,
-    onFavorite: () -> Unit,
-    onDelete: () -> Unit
-) {
-    TopAppBar(
-        title = {
-            Text(
-                text = "$selectedCount selected",
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Exit selection mode"
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = onShare) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share selected",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Toggle favorite",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete selected",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    )
 }
 
 @Composable
@@ -599,55 +538,6 @@ fun DeleteConfirmationDialog(
                 )
             ) {
                 Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        shape = RoundedCornerShape(20.dp)
-    )
-}
-
-@Composable
-fun MultiDeleteConfirmationDialog(
-    count: Int,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(28.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "Delete $count Link${if (count > 1) "s" else ""}?",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Text(
-                text = "Are you sure you want to delete $count selected link${if (count > 1) "s" else ""}? This action cannot be undone.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text("Delete All")
             }
         },
         dismissButton = {
