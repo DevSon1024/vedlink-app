@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.devson.vedlink.ui.presentation.screens.about.AboutScreen
 import com.devson.vedlink.ui.presentation.screens.details.LinkDetailsScreen
 import com.devson.vedlink.ui.presentation.screens.favorites.FavoritesScreen
 import com.devson.vedlink.ui.presentation.screens.folders.FoldersScreen
@@ -34,7 +35,15 @@ fun NavGraph(
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+            )
+        }
+
+        composable(Screen.About.route) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(

@@ -29,7 +29,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateToAbout: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -182,44 +183,13 @@ fun SettingsScreen(
 
             SettingsItem(
                 icon = Icons.Default.Info,
-                title = "Version",
-                subtitle = "1.0.0",
-                onClick = {}
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Code,
-                title = "Open Source",
-                subtitle = "View on GitHub",
-                onClick = { /* TODO: Open GitHub */ }
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Policy,
-                title = "Privacy Policy",
-                subtitle = "View our privacy policy",
-                onClick = {
-                    openUrlInBrowser(
-                        context = context,
-                        url = "https://sites.google.com/view/vedlink-privacy-policy-page"
-                    )
-                }
+                title = "About VedLink",
+                subtitle = "Version, Credits & More",
+                onClick = onNavigateToAbout
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
-
-/**
- * Opens a URL in the default browser
- */
-fun openUrlInBrowser(context: Context, url: String) {
-    try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        Toast.makeText(context, "Unable to open browser", Toast.LENGTH_SHORT).show()
     }
 }
 

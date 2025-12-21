@@ -76,6 +76,7 @@ android {
         compose = true
         viewBinding = true
         resValues = false
+        buildConfig = true
     }
 
     packaging {
