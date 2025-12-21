@@ -1,6 +1,7 @@
 package com.devson.vedlink.ui.presentation.screens.settings
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -193,8 +194,32 @@ fun SettingsScreen(
                 onClick = { /* TODO: Open GitHub */ }
             )
 
+            SettingsItem(
+                icon = Icons.Default.Policy,
+                title = "Privacy Policy",
+                subtitle = "View our privacy policy",
+                onClick = {
+                    openUrlInBrowser(
+                        context = context,
+                        url = "https://sites.google.com/view/vedlink-privacy-policy-page"
+                    )
+                }
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+/**
+ * Opens a URL in the default browser
+ */
+fun openUrlInBrowser(context: Context, url: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Unable to open browser", Toast.LENGTH_SHORT).show()
     }
 }
 
