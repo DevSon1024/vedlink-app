@@ -1,6 +1,8 @@
 package com.devson.vedlink.ui.presentation.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,10 +20,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.devson.vedlink.domain.model.Link
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CompactLinkCard(
     link: Link,
     onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
     onFavoriteClick: () -> Unit,
     onCopyClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
@@ -33,16 +39,36 @@ fun CompactLinkCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongPress
+            )
+            .then(
+                if (isSelected) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-        )
+        border = if (!isSelected) {
+            androidx.compose.foundation.BorderStroke(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+        } else null
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -59,7 +85,8 @@ fun CompactLinkCard(
                         model = link.imageUrl,
                         contentDescription = link.title,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        alpha = if (isSelectionMode && !isSelected) 0.7f else 1f
                     )
                 } else {
                     Surface(
@@ -80,23 +107,59 @@ fun CompactLinkCard(
                     }
                 }
 
-                // Favorite Heart Badge (top-left if favorited)
-                if (link.isFavorite) {
+                // Selection Mode - Checkbox Overlay
+                if (isSelectionMode) {
                     Surface(
                         modifier = Modifier
-                            .align(Alignment.TopStart)
+                            .align(Alignment.TopEnd)
                             .padding(8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFFF4081).copy(alpha = 0.95f)
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        }
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite,
-                            contentDescription = "Favorite",
+                        Box(
+                            modifier = Modifier.size(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
+                                    contentDescription = "Selected",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Circle,
+                                    contentDescription = "Not selected",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Normal Mode - Favorite Heart Badge
+                    if (link.isFavorite) {
+                        Surface(
                             modifier = Modifier
-                                .padding(4.dp)
-                                .size(16.dp),
-                            tint = Color.White
-                        )
+                                .align(Alignment.TopStart)
+                                .padding(8.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFF4081).copy(alpha = 0.95f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Favorite,
+                                contentDescription = "Favorite",
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .size(16.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }
@@ -144,41 +207,43 @@ fun CompactLinkCard(
                         )
                     }
 
-                    // Three-Dot Menu Button
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More options",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Three-Dot Menu Button (hidden in selection mode)
+                    if (!isSelectionMode) {
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            LinkOptionsMenu(
+                                expanded = showMenu,
+                                onDismiss = { showMenu = false },
+                                isFavorite = link.isFavorite,
+                                onFavoriteClick = {
+                                    onFavoriteClick()
+                                    showMenu = false
+                                },
+                                onCopyClick = {
+                                    onCopyClick()
+                                    showMenu = false
+                                },
+                                onShareClick = {
+                                    onShareClick()
+                                    showMenu = false
+                                },
+                                onDeleteClick = {
+                                    onDeleteClick()
+                                    showMenu = false
+                                }
                             )
                         }
-
-                        LinkOptionsMenu(
-                            expanded = showMenu,
-                            onDismiss = { showMenu = false },
-                            isFavorite = link.isFavorite,
-                            onFavoriteClick = {
-                                onFavoriteClick()
-                                showMenu = false
-                            },
-                            onCopyClick = {
-                                onCopyClick()
-                                showMenu = false
-                            },
-                            onShareClick = {
-                                onShareClick()
-                                showMenu = false
-                            },
-                            onDeleteClick = {
-                                onDeleteClick()
-                                showMenu = false
-                            }
-                        )
                     }
                 }
             }

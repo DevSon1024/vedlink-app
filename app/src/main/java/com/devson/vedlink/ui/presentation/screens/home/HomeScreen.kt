@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,7 +31,7 @@ import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onNavigateToDetails: (Int) -> Unit,
@@ -39,6 +41,11 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<Link?>(null) }
+
+    // Selection mode state
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -61,65 +68,120 @@ fun HomeScreen(
         }
     }
 
-    // Wrap everything in a Box to allow the Snackbar to float at the top
+    // Function to exit selection mode
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedLinks = emptySet()
+    }
+
+    // Function to handle long press
+    fun handleLongPress(linkId: Int) {
+        if (!isSelectionMode) {
+            isSelectionMode = true
+            selectedLinks = setOf(linkId)
+        }
+    }
+
+    // Function to handle click in selection mode
+    fun handleSelectionClick(linkId: Int) {
+        selectedLinks = if (selectedLinks.contains(linkId)) {
+            val newSelection = selectedLinks - linkId
+            if (newSelection.isEmpty()) {
+                isSelectionMode = false
+            }
+            newSelection
+        } else {
+            selectedLinks + linkId
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 Column {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Saved Links",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        actions = {
-                            // Refresh Button
-                            IconButton(onClick = { viewModel.refreshMetadata() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh metadata",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    if (isSelectionMode) {
+                        // Selection Mode Top Bar
+                        SelectionTopBar(
+                            selectedCount = selectedLinks.size,
+                            onClose = { exitSelectionMode() },
+                            onShare = {
+                                val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
+                                shareMultipleLinks(context, selectedLinksData)
+                                exitSelectionMode()
+                            },
+                            onFavorite = {
+                                selectedLinks.forEach { linkId ->
+                                    val link = uiState.links.find { it.id == linkId }
+                                    link?.let {
+                                        viewModel.toggleFavorite(it.id, it.isFavorite)
+                                    }
+                                }
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "${selectedLinks.size} link(s) updated",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                exitSelectionMode()
+                            },
+                            onDelete = {
+                                val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
+                                showDeleteDialog = selectedLinksData.firstOrNull() // Trigger delete dialog
                             }
-
-                            // Search Button
-                            IconButton(onClick = { viewModel.toggleSearchActive() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // View Toggle Button (Grid/List)
-                            IconButton(onClick = { viewModel.toggleViewMode() }) {
-                                Icon(
-                                    imageVector = if (uiState.isGridView)
-                                        Icons.Default.ViewList
-                                    else
-                                        Icons.Default.GridView,
-                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // More Options
-                            IconButton(onClick = { /* TODO: Show menu */ }) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More options",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
                         )
-                    )
+                    } else {
+                        // Normal Top Bar
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = "Saved Links",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            actions = {
+                                IconButton(onClick = { viewModel.refreshMetadata() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh metadata",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
 
-                    AnimatedVisibility(visible = uiState.isSearchActive) {
+                                IconButton(onClick = { viewModel.toggleSearchActive() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Search",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                    Icon(
+                                        imageVector = if (uiState.isGridView)
+                                            Icons.Default.ViewList
+                                        else
+                                            Icons.Default.GridView,
+                                        contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                IconButton(onClick = { /* TODO: Show menu */ }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More options",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    }
+
+                    AnimatedVisibility(visible = uiState.isSearchActive && !isSelectionMode) {
                         SearchBar(
                             query = uiState.searchQuery,
                             onQueryChange = { viewModel.onSearchQueryChange(it) },
@@ -128,7 +190,6 @@ fun HomeScreen(
                     }
                 }
             },
-            // REMOVED: snackbarHost = { SnackbarHost(snackbarHostState) },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
@@ -137,8 +198,7 @@ fun HomeScreen(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // Stats Section
-                    if (!uiState.isSearchActive && uiState.links.isNotEmpty()) {
+                    if (!uiState.isSearchActive && uiState.links.isNotEmpty() && !isSelectionMode) {
                         ItemCountSection(
                             itemCount = uiState.links.size,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -163,7 +223,18 @@ fun HomeScreen(
                             LinksList(
                                 links = uiState.links,
                                 isGridView = uiState.isGridView,
-                                onLinkClick = onNavigateToDetails,
+                                isSelectionMode = isSelectionMode,
+                                selectedLinks = selectedLinks,
+                                onLinkClick = { linkId ->
+                                    if (isSelectionMode) {
+                                        handleSelectionClick(linkId)
+                                    } else {
+                                        onNavigateToDetails(linkId)
+                                    }
+                                },
+                                onLinkLongPress = { linkId ->
+                                    handleLongPress(linkId)
+                                },
                                 onFavoriteClick = { link ->
                                     viewModel.toggleFavorite(link.id, link.isFavorite)
                                 },
@@ -187,8 +258,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Floating Action Button
-                if (!uiState.isSearchActive) {
+                if (!uiState.isSearchActive && !isSelectionMode) {
                     FloatingActionButton(
                         onClick = { showAddDialog = true },
                         modifier = Modifier
@@ -212,12 +282,11 @@ fun HomeScreen(
             }
         }
 
-        // ADDED: Position the SnackbarHost here to float at the top
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp) // Gap from the top of the screen
+                .padding(top = 16.dp)
         )
     }
 
@@ -234,14 +303,84 @@ fun HomeScreen(
     }
 
     showDeleteDialog?.let { link ->
-        DeleteConfirmationDialog(
-            onDismiss = { showDeleteDialog = null },
-            onConfirm = {
-                viewModel.deleteLink(link)
-                showDeleteDialog = null
-            }
-        )
+        if (isSelectionMode && selectedLinks.isNotEmpty()) {
+            MultiDeleteConfirmationDialog(
+                count = selectedLinks.size,
+                onDismiss = {
+                    showDeleteDialog = null
+                },
+                onConfirm = {
+                    selectedLinks.forEach { linkId ->
+                        val linkToDelete = uiState.links.find { it.id == linkId }
+                        linkToDelete?.let { viewModel.deleteLink(it) }
+                    }
+                    showDeleteDialog = null
+                    exitSelectionMode()
+                }
+            )
+        } else {
+            DeleteConfirmationDialog(
+                onDismiss = { showDeleteDialog = null },
+                onConfirm = {
+                    viewModel.deleteLink(link)
+                    showDeleteDialog = null
+                }
+            )
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectionTopBar(
+    selectedCount: Int,
+    onClose: () -> Unit,
+    onShare: () -> Unit,
+    onFavorite: () -> Unit,
+    onDelete: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = "$selectedCount selected",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Exit selection mode"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onShare) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share selected",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onFavorite) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Toggle favorite",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete selected",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    )
 }
 
 @Composable
@@ -298,11 +437,15 @@ fun SearchBar(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LinksList(
     links: List<Link>,
     isGridView: Boolean,
+    isSelectionMode: Boolean,
+    selectedLinks: Set<Int>,
     onLinkClick: (Int) -> Unit,
+    onLinkLongPress: (Int) -> Unit,
     onFavoriteClick: (Link) -> Unit,
     onDeleteClick: (Link) -> Unit,
     onCopyClick: (Link) -> Unit,
@@ -326,7 +469,14 @@ fun LinksList(
             ) { link ->
                 CompactLinkCard(
                     link = link,
-                    onClick = { onLinkClick(link.id) },
+                    onClick = {
+                        onLinkClick(link.id)
+                    },
+                    onLongPress = {
+                        onLinkLongPress(link.id)
+                    },
+                    isSelected = selectedLinks.contains(link.id),
+                    isSelectionMode = isSelectionMode,
                     onFavoriteClick = { onFavoriteClick(link) },
                     onCopyClick = { onCopyClick(link) },
                     onShareClick = { onShareClick(link) },
@@ -350,7 +500,14 @@ fun LinksList(
             ) { link ->
                 LinkCard(
                     link = link,
-                    onClick = { onLinkClick(link.id) },
+                    onClick = {
+                        onLinkClick(link.id)
+                    },
+                    onLongPress = {
+                        onLinkLongPress(link.id)
+                    },
+                    isSelected = selectedLinks.contains(link.id),
+                    isSelectionMode = isSelectionMode,
                     onFavoriteClick = { onFavoriteClick(link) },
                     onMoreClick = { onDeleteClick(link) },
                     onCopyClick = { onCopyClick(link) },
@@ -456,6 +613,55 @@ fun DeleteConfirmationDialog(
     )
 }
 
+@Composable
+fun MultiDeleteConfirmationDialog(
+    count: Int,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(28.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Delete $count Link${if (count > 1) "s" else ""}?",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to delete $count selected link${if (count > 1) "s" else ""}? This action cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Delete All")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
 // Helper functions
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -470,4 +676,25 @@ private fun shareLink(context: Context, url: String, title: String?) {
         putExtra(Intent.EXTRA_TITLE, title ?: "Check out this link")
     }
     context.startActivity(Intent.createChooser(intent, "Share link via"))
+}
+
+private fun shareMultipleLinks(context: Context, links: List<Link>) {
+    val shareText = buildString {
+        appendLine("Check out these links:")
+        appendLine()
+        links.forEach { link ->
+            if (!link.title.isNullOrBlank()) {
+                appendLine(link.title)
+            }
+            appendLine(link.url)
+            appendLine()
+        }
+    }
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+        putExtra(Intent.EXTRA_TITLE, "Shared Links from VedLink")
+    }
+    context.startActivity(Intent.createChooser(intent, "Share links via"))
 }
