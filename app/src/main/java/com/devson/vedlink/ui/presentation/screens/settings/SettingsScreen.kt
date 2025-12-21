@@ -37,6 +37,13 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Calculate cache size
+    var cacheSize by remember { mutableStateOf("Calculating...") }
+
+    LaunchedEffect(Unit) {
+        cacheSize = getCacheSize(context)
+    }
+
     // Export Launcher
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -140,6 +147,30 @@ fun SettingsScreen(
                 onClick = {}
             )
 
+            SettingsItem(
+                icon = Icons.Default.Image,
+                title = "Image Cache",
+                subtitle = cacheSize,
+                onClick = {
+                    scope.launch {
+                        cacheSize = getCacheSize(context)
+                    }
+                }
+            )
+            SettingsItem(
+                icon = Icons.Default.DeleteSweep,
+                title = "Clear Cache",
+                subtitle = "Free up space by clearing app cache",
+                onClick = {
+                    viewModel.clearCache(context)
+                    scope.launch {
+                        kotlinx.coroutines.delay(500)
+                        cacheSize = getCacheSize(context)
+                    }
+                },
+                tint = MaterialTheme.colorScheme.primary
+            )
+
             // Data Management Section
             SettingsSection(title = "Data Management")
 
@@ -170,14 +201,6 @@ fun SettingsScreen(
                 }
             )
 
-            SettingsItem(
-                icon = Icons.Default.DeleteSweep,
-                title = "Clear Cache",
-                subtitle = "Free up space by clearing app cache",
-                onClick = { viewModel.clearCache(context) },
-                tint = MaterialTheme.colorScheme.primary
-            )
-
             // About Section
             SettingsSection(title = "About")
 
@@ -186,6 +209,15 @@ fun SettingsScreen(
                 title = "About VedLink",
                 subtitle = "Version, Credits & More",
                 onClick = onNavigateToAbout
+            )
+
+            SettingsItem(
+                icon = Icons.Default.Policy,
+                title = "Privacy Policy",
+                subtitle = "How we handle your data",
+                onClick = {
+                    openPrivacyPolicy(context)
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -302,5 +334,50 @@ fun SettingsSwitchItem(
                 onCheckedChange = onCheckedChange
             )
         }
+    }
+}
+
+private fun openPrivacyPolicy(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/vedlink-privacy-policy-page"))
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+private fun getCacheSize(context: Context): String {
+    return try {
+        val cacheDir = context.cacheDir
+        val totalSize = calculateDirectorySize(cacheDir)
+        formatFileSize(totalSize)
+    } catch (e: Exception) {
+        "0 B"
+    }
+}
+
+private fun calculateDirectorySize(directory: java.io.File): Long {
+    var size: Long = 0
+    if (directory.exists()) {
+        val files = directory.listFiles()
+        if (files != null) {
+            for (file in files) {
+                size += if (file.isDirectory) {
+                    calculateDirectorySize(file)
+                } else {
+                    file.length()
+                }
+            }
+        }
+    }
+    return size
+}
+
+private fun formatFileSize(size: Long): String {
+    return when {
+        size < 1024 -> "$size B"
+        size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
+        size < 1024 * 1024 * 1024 -> String.format("%.2f MB", size / (1024.0 * 1024.0))
+        else -> String.format("%.2f GB", size / (1024.0 * 1024.0 * 1024.0))
     }
 }

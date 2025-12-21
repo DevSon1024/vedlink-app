@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import javax.inject.Inject
+import coil.imageLoader
 
 data class SettingsUiState(
     val totalLinks: Int = 0,
@@ -90,17 +91,18 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearCache(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
+                // Clear app cache
                 context.cacheDir.deleteRecursively()
-                context.codeCacheDir.deleteRecursively()
-                withContext(Dispatchers.Main) {
-                    _toastMessage.emit("Cache cleared successfully")
-                }
+
+                // Clear Coil image cache
+                context.imageLoader.memoryCache?.clear()
+                context.imageLoader.diskCache?.clear()
+
+                _toastMessage.emit("Cache cleared successfully")
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _toastMessage.emit("Failed to clear cache")
-                }
+                _toastMessage.emit("Failed to clear cache: ${e.message}")
             }
         }
     }
@@ -193,6 +195,18 @@ class SettingsViewModel @Inject constructor(
                     _toastMessage.emit("Import failed: ${e.message}")
                 }
             }
+        }
+    }
+    fun getCacheSize(context: Context): String {
+        val cacheSize = context.cacheDir.walkTopDown()
+            .filter { it.isFile }
+            .map { it.length() }
+            .sum()
+
+        return when {
+            cacheSize < 1024 -> "$cacheSize B"
+            cacheSize < 1024 * 1024 -> "${cacheSize / 1024} KB"
+            else -> "${cacheSize / (1024 * 1024)} MB"
         }
     }
 
