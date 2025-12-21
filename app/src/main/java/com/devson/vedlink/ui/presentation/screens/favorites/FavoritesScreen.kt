@@ -1,6 +1,8 @@
 package com.devson.vedlink.ui.presentation.screens.favorites
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,8 +22,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.ui.presentation.components.LinkCard
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import com.devson.vedlink.ui.presentation.components.LinkCard
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
 
@@ -36,20 +39,36 @@ fun FavoritesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var showDeleteDialog by remember { mutableStateOf<Link?>(null) }
-    var isGridView by remember { mutableStateOf(false) }
-
     // Selection mode state
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Function to exit selection mode
+    // Event handling
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is FavoritesUiEvent.ShowError -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+                is FavoritesUiEvent.ShowSuccess -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        }
+    }
+
     fun exitSelectionMode() {
         isSelectionMode = false
         selectedLinks = emptySet()
     }
 
-    // Function to handle long press
     fun handleLongPress(linkId: Int) {
         if (!isSelectionMode) {
             isSelectionMode = true
@@ -57,7 +76,6 @@ fun FavoritesScreen(
         }
     }
 
-    // Function to handle click in selection mode
     fun handleSelectionClick(linkId: Int) {
         selectedLinks = if (selectedLinks.contains(linkId)) {
             val newSelection = selectedLinks - linkId
@@ -70,45 +88,46 @@ fun FavoritesScreen(
         }
     }
 
-    // Handle back press in selection mode
-    BackHandler(enabled = isSelectionMode) {
-        exitSelectionMode()
+    fun handleSelectAll() {
+        if (selectedLinks.size == uiState.favoriteLinks.size) {
+            exitSelectionMode()
+        } else {
+            selectedLinks = uiState.favoriteLinks.map { it.id }.toSet()
+        }
+    }
+
+    // Calculate favorite status - in favorites screen, all are already favorited
+    val selectedLinksData = uiState.favoriteLinks.filter { it.id in selectedLinks }
+    val favoriteStatus = if (selectedLinksData.isNotEmpty()) {
+        FavoriteStatus.ALL_FAVORITED // Show HeartBroken to remove from favorites
+    } else {
+        FavoriteStatus.HIDDEN
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 if (isSelectionMode) {
-                    // Selection Mode Top Bar
                     SelectionTopBar(
                         selectedCount = selectedLinks.size,
+                        totalCount = uiState.favoriteLinks.size,
+                        allSelected = selectedLinks.size == uiState.favoriteLinks.size,
+                        favoriteStatus = favoriteStatus,
                         onClose = { exitSelectionMode() },
+                        onSelectAll = { handleSelectAll() },
                         onShare = {
-                            val selectedLinksData = uiState.favoriteLinks.filter { it.id in selectedLinks }
                             shareMultipleLinks(context, selectedLinksData)
                             exitSelectionMode()
                         },
                         onFavorite = {
-                            selectedLinks.forEach { linkId ->
-                                val link = uiState.favoriteLinks.find { it.id == linkId }
-                                link?.let {
-                                    viewModel.toggleFavorite(it.id, it.isFavorite)
-                                }
-                            }
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "${selectedLinks.size} link(s) removed from favorites",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
+                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
                             exitSelectionMode()
                         },
                         onDelete = {
-                            showDeleteDialog = uiState.favoriteLinks.find { it.id in selectedLinks }
+                            showDeleteDialog = true
                         }
                     )
                 } else {
-                    // Normal Top Bar
                     TopAppBar(
                         title = {
                             Text(
@@ -118,18 +137,15 @@ fun FavoritesScreen(
                             )
                         },
                         actions = {
-                            // View Toggle Button (Grid/List)
-                            if (uiState.favoriteLinks.isNotEmpty()) {
-                                IconButton(onClick = { isGridView = !isGridView }) {
-                                    Icon(
-                                        imageVector = if (isGridView)
-                                            Icons.Default.ViewList
-                                        else
-                                            Icons.Default.GridView,
-                                        contentDescription = if (isGridView) "List View" else "Grid View",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                Icon(
+                                    imageVector = if (uiState.isGridView)
+                                        Icons.Default.ViewList
+                                    else
+                                        Icons.Default.GridView,
+                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -137,7 +153,8 @@ fun FavoritesScreen(
                         )
                     )
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -156,8 +173,11 @@ fun FavoritesScreen(
                         )
                     }
                     else -> {
-                        if (isGridView) {
-                            // Grid View
+                        AnimatedVisibility(
+                            visible = uiState.isGridView,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(
@@ -189,12 +209,6 @@ fun FavoritesScreen(
                                         isSelectionMode = isSelectionMode,
                                         onFavoriteClick = {
                                             viewModel.toggleFavorite(link.id, link.isFavorite)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "Removed from favorites",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
                                         },
                                         onCopyClick = {
                                             copyToClipboard(context, link.url)
@@ -209,13 +223,18 @@ fun FavoritesScreen(
                                             shareLink(context, link.url, link.title)
                                         },
                                         onDeleteClick = {
-                                            showDeleteDialog = link
+                                            viewModel.deleteLink(link)
                                         }
                                     )
                                 }
                             }
-                        } else {
-                            // List View
+                        }
+
+                        AnimatedVisibility(
+                            visible = !uiState.isGridView,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
                             LazyColumn(
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -245,15 +264,9 @@ fun FavoritesScreen(
                                         isSelectionMode = isSelectionMode,
                                         onFavoriteClick = {
                                             viewModel.toggleFavorite(link.id, link.isFavorite)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "Removed from favorites",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
                                         },
                                         onMoreClick = {
-                                            showDeleteDialog = link
+                                            viewModel.deleteLink(link)
                                         },
                                         onCopyClick = {
                                             copyToClipboard(context, link.url)
@@ -268,7 +281,7 @@ fun FavoritesScreen(
                                             shareLink(context, link.url, link.title)
                                         },
                                         onDeleteClick = {
-                                            showDeleteDialog = link
+                                            viewModel.deleteLink(link)
                                         }
                                     )
                                 }
@@ -279,7 +292,6 @@ fun FavoritesScreen(
             }
         }
 
-        // Snackbar Host
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -289,47 +301,19 @@ fun FavoritesScreen(
     }
 
     // Delete Dialog
-    showDeleteDialog?.let { link ->
-        if (isSelectionMode && selectedLinks.isNotEmpty()) {
-            MultiDeleteConfirmationDialog(
-                count = selectedLinks.size,
-                onDismiss = {
-                    showDeleteDialog = null
-                },
-                onConfirm = {
-                    selectedLinks.forEach { linkId ->
-                        val linkToDelete = uiState.favoriteLinks.find { it.id == linkId }
-                        linkToDelete?.let { viewModel.deleteLink(it) }
-                    }
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "${selectedLinks.size} link(s) deleted",
-                            duration = SnackbarDuration.Short
-                        )
-                    }
-                    showDeleteDialog = null
-                    exitSelectionMode()
-                }
-            )
-        } else {
-            DeleteConfirmationDialog(
-                onDismiss = { showDeleteDialog = null },
-                onConfirm = {
-                    viewModel.deleteLink(link)
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Link deleted",
-                            duration = SnackbarDuration.Short
-                        )
-                    }
-                    showDeleteDialog = null
-                }
-            )
-        }
+    if (showDeleteDialog && selectedLinks.isNotEmpty()) {
+        MultiDeleteConfirmationDialog(
+            count = selectedLinks.size,
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                viewModel.deleteLinks(selectedLinks.toList())
+                showDeleteDialog = false
+                exitSelectionMode()
+            }
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmptyFavoritesState(modifier: Modifier = Modifier) {
     Column(
@@ -349,7 +333,7 @@ fun EmptyFavoritesState(modifier: Modifier = Modifier) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Favorite,
+                    imageVector = Icons.Default.FavoriteBorder,
                     contentDescription = null,
                     modifier = Modifier.size(56.dp),
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
@@ -368,58 +352,10 @@ fun EmptyFavoritesState(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Links you mark as favorite\nwill appear here",
+            text = "Mark links as favorites to\nsee them here",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
-}
-
-@Composable
-fun DeleteConfirmationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(28.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "Delete Link?",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Text(
-                text = "Are you sure you want to delete this link? This action cannot be undone.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        shape = RoundedCornerShape(20.dp)
-    )
 }

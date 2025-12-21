@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -30,19 +30,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.ui.presentation.screens.home.LinksList
+import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import com.devson.vedlink.ui.presentation.components.LinkCard
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
 
-// Helper to clean domain names (e.g. "www.instagram.com" -> "Instagram")
 fun getCleanDomainName(domain: String): String {
     return domain
         .removePrefix("www.")
-        .substringBeforeLast(".") // Removes .com, .net etc roughly
+        .substringBeforeLast(".")
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FoldersScreen(
     onNavigateToDetails: (Int) -> Unit,
@@ -53,24 +54,36 @@ fun FoldersScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // State for Accordion in List View
     var expandedDomain by remember { mutableStateOf<String?>(null) }
-
-    // State for navigation in Grid View (Drill down into folder)
     var selectedFolderDomain by remember { mutableStateOf<String?>(null) }
-
-    // Selection mode state
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Function to exit selection mode
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is FoldersUiEvent.ShowError -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+                is FoldersUiEvent.ShowSuccess -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        }
+    }
+
     fun exitSelectionMode() {
         isSelectionMode = false
         selectedLinks = emptySet()
     }
 
-    // Function to handle long press
     fun handleLongPress(linkId: Int) {
         if (!isSelectionMode) {
             isSelectionMode = true
@@ -78,7 +91,6 @@ fun FoldersScreen(
         }
     }
 
-    // Function to handle click in selection mode
     fun handleSelectionClick(linkId: Int) {
         selectedLinks = if (selectedLinks.contains(linkId)) {
             val newSelection = selectedLinks - linkId
@@ -91,7 +103,17 @@ fun FoldersScreen(
         }
     }
 
-    // Handle Back press when inside a folder in Grid View or selection mode
+    fun handleSelectAll() {
+        val currentDomain = selectedFolderDomain ?: expandedDomain
+        val folderLinks = uiState.linksByDomain[currentDomain] ?: emptyList()
+
+        if (selectedLinks.size == folderLinks.size) {
+            exitSelectionMode()
+        } else {
+            selectedLinks = folderLinks.map { it.id }.toSet()
+        }
+    }
+
     BackHandler(enabled = selectedFolderDomain != null || isSelectionMode) {
         when {
             isSelectionMode -> exitSelectionMode()
@@ -99,28 +121,29 @@ fun FoldersScreen(
         }
     }
 
+    // Calculate favorite status
+    val currentDomain = selectedFolderDomain ?: expandedDomain
+    val folderLinks = uiState.linksByDomain[currentDomain] ?: emptyList()
+    val selectedLinksData = folderLinks.filter { it.id in selectedLinks }
+    val favoriteStatus = getFavoriteStatus(selectedLinksData)
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                if (isSelectionMode && selectedFolderDomain != null) {
-                    // Selection Mode Top Bar
+                if (isSelectionMode && (selectedFolderDomain != null || expandedDomain != null)) {
                     SelectionTopBar(
                         selectedCount = selectedLinks.size,
+                        totalCount = folderLinks.size,
+                        allSelected = selectedLinks.size == folderLinks.size,
+                        favoriteStatus = favoriteStatus,
                         onClose = { exitSelectionMode() },
+                        onSelectAll = { handleSelectAll() },
                         onShare = {
-                            val folderLinks = uiState.linksByDomain[selectedFolderDomain] ?: emptyList()
-                            val selectedLinksData = folderLinks.filter { it.id in selectedLinks }
                             shareMultipleLinks(context, selectedLinksData)
                             exitSelectionMode()
                         },
                         onFavorite = {
-                            // Handle favorite toggle for selected links
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "${selectedLinks.size} link(s) updated",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
+                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
                             exitSelectionMode()
                         },
                         onDelete = {
@@ -140,24 +163,24 @@ fun FoldersScreen(
                         },
                         navigationIcon = {
                             if (selectedFolderDomain != null) {
-                                IconButton(onClick = { selectedFolderDomain = null }) {
+                                IconButton(onClick = {
+                                    selectedFolderDomain = null
+                                    exitSelectionMode()
+                                }) {
                                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                                 }
                             }
                         },
                         actions = {
-                            // View Toggle Button (Grid/List) - Only show on main Folders view
-                            if (selectedFolderDomain == null) {
-                                IconButton(onClick = { viewModel.toggleViewMode() }) {
-                                    Icon(
-                                        imageVector = if (uiState.isGridView)
-                                            Icons.Default.ViewList
-                                        else
-                                            Icons.Default.GridView,
-                                        contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                Icon(
+                                    imageVector = if (uiState.isGridView)
+                                        Icons.Default.ViewList
+                                    else
+                                        Icons.Default.GridView,
+                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -184,58 +207,134 @@ fun FoldersScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
-                    // Show links for a specific folder (Grid View Click Action)
                     selectedFolderDomain != null -> {
                         val folderLinks = uiState.linksByDomain[selectedFolderDomain] ?: emptyList()
 
                         if (folderLinks.isNotEmpty()) {
-                            // Reuse LinksList from Home Screen for consistency
-                            LinksList(
-                                links = folderLinks,
-                                isGridView = false,
-                                isSelectionMode = isSelectionMode,
-                                selectedLinks = selectedLinks,
-                                onLinkClick = { linkId ->
-                                    if (isSelectionMode) {
-                                        handleSelectionClick(linkId)
-                                    } else {
-                                        onNavigateToDetails(linkId)
-                                    }
-                                },
-                                onLinkLongPress = { linkId ->
-                                    handleLongPress(linkId)
-                                },
-                                onFavoriteClick = { link ->
-                                    // Handle favorite toggle
-                                },
-                                onDeleteClick = { },
-                                onCopyClick = { link ->
-                                    copyToClipboard(context, link.url)
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Link copied to clipboard",
-                                            duration = SnackbarDuration.Short
+                            AnimatedVisibility(
+                                visible = uiState.isGridView,
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 8.dp,
+                                        bottom = 120.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(
+                                        items = folderLinks,
+                                        key = { it.id }
+                                    ) { link ->
+                                        CompactLinkCard(
+                                            link = link,
+                                            onClick = {
+                                                if (isSelectionMode) {
+                                                    handleSelectionClick(link.id)
+                                                } else {
+                                                    onNavigateToDetails(link.id)
+                                                }
+                                            },
+                                            onLongPress = {
+                                                handleLongPress(link.id)
+                                            },
+                                            isSelected = selectedLinks.contains(link.id),
+                                            isSelectionMode = isSelectionMode,
+                                            onFavoriteClick = {
+                                                viewModel.toggleFavorite(link.id, link.isFavorite)
+                                            },
+                                            onCopyClick = {
+                                                copyToClipboard(context, link.url)
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Link copied to clipboard",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            },
+                                            onShareClick = {
+                                                shareLink(context, link.url, link.title)
+                                            },
+                                            onDeleteClick = {
+                                                viewModel.deleteLink(link)
+                                            }
                                         )
                                     }
-                                },
-                                onShareClick = { link ->
-                                    shareLink(context, link.url, link.title)
                                 }
-                            )
+                            }
+
+                            AnimatedVisibility(
+                                visible = !uiState.isGridView,
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 8.dp,
+                                        bottom = 120.dp
+                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(
+                                        items = folderLinks,
+                                        key = { it.id }
+                                    ) { link ->
+                                        LinkCard(
+                                            link = link,
+                                            onClick = {
+                                                if (isSelectionMode) {
+                                                    handleSelectionClick(link.id)
+                                                } else {
+                                                    onNavigateToDetails(link.id)
+                                                }
+                                            },
+                                            onLongPress = {
+                                                handleLongPress(link.id)
+                                            },
+                                            isSelected = selectedLinks.contains(link.id),
+                                            isSelectionMode = isSelectionMode,
+                                            onFavoriteClick = {
+                                                viewModel.toggleFavorite(link.id, link.isFavorite)
+                                            },
+                                            onMoreClick = { },
+                                            onCopyClick = {
+                                                copyToClipboard(context, link.url)
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Link copied to clipboard",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            },
+                                            onShareClick = {
+                                                shareLink(context, link.url, link.title)
+                                            },
+                                            onDeleteClick = {
+                                                viewModel.deleteLink(link)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         } else {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("No links in this folder")
                             }
                         }
                     }
-                    // Main Folders View
                     else -> {
                         AnimatedVisibility(
                             visible = uiState.isGridView,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
-                            // Grid View
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(16.dp),
@@ -248,7 +347,10 @@ fun FoldersScreen(
                                 ) { folder ->
                                     FolderGridCard(
                                         folder = folder,
-                                        onClick = { selectedFolderDomain = folder.domain }
+                                        onClick = {
+                                            selectedFolderDomain = folder.domain
+                                            expandedDomain = null
+                                        }
                                     )
                                 }
                             }
@@ -259,7 +361,6 @@ fun FoldersScreen(
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
-                            // List View (Accordion)
                             LazyColumn(
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
@@ -273,7 +374,7 @@ fun FoldersScreen(
                                     items = uiState.folders,
                                     key = { it.domain }
                                 ) { folder ->
-                                    FolderCard(
+                                    FolderListCard(
                                         folder = folder,
                                         isExpanded = expandedDomain == folder.domain,
                                         onToggleExpand = {
@@ -288,7 +389,36 @@ fun FoldersScreen(
                                         } else {
                                             emptyList()
                                         },
-                                        onLinkClick = onNavigateToDetails
+                                        isSelectionMode = isSelectionMode,
+                                        selectedLinks = selectedLinks,
+                                        onLinkClick = { linkId ->
+                                            if (isSelectionMode) {
+                                                handleSelectionClick(linkId)
+                                            } else {
+                                                onNavigateToDetails(linkId)
+                                            }
+                                        },
+                                        onLinkLongPress = { linkId ->
+                                            handleLongPress(linkId)
+                                        },
+                                        onFavoriteClick = { link ->
+                                            viewModel.toggleFavorite(link.id, link.isFavorite)
+                                        },
+                                        onCopyClick = { link ->
+                                            copyToClipboard(context, link.url)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "Link copied to clipboard",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        },
+                                        onShareClick = { link ->
+                                            shareLink(context, link.url, link.title)
+                                        },
+                                        onDeleteClick = { link ->
+                                            viewModel.deleteLink(link)
+                                        }
                                     )
                                 }
                             }
@@ -298,7 +428,6 @@ fun FoldersScreen(
             }
         }
 
-        // Snackbar Host
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -307,19 +436,12 @@ fun FoldersScreen(
         )
     }
 
-    // Delete Dialog
     if (showDeleteDialog && selectedLinks.isNotEmpty()) {
         MultiDeleteConfirmationDialog(
             count = selectedLinks.size,
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
-                // Handle deletion of selected links
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "${selectedLinks.size} link(s) deleted",
-                        duration = SnackbarDuration.Short
-                    )
-                }
+                viewModel.deleteLinks(selectedLinks.toList())
                 showDeleteDialog = false
                 exitSelectionMode()
             }
@@ -351,7 +473,6 @@ fun FolderGridCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Favicon with fallback
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = CircleShape,
@@ -368,8 +489,7 @@ fun FolderGridCard(
                         .fillMaxSize()
                         .padding(8.dp)
                         .clip(CircleShape),
-                    contentScale = ContentScale.Fit,
-                    error = null // Could add error icon
+                    contentScale = ContentScale.Fit
                 )
             }
 
@@ -392,13 +512,21 @@ fun FolderGridCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FolderCard(
+fun FolderListCard(
     folder: FolderItem,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     links: List<Link>,
-    onLinkClick: (Int) -> Unit
+    isSelectionMode: Boolean,
+    selectedLinks: Set<Int>,
+    onLinkClick: (Int) -> Unit,
+    onLinkLongPress: (Int) -> Unit,
+    onFavoriteClick: (Link) -> Unit,
+    onCopyClick: (Link) -> Unit,
+    onShareClick: (Link) -> Unit,
+    onDeleteClick: (Link) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -467,76 +595,30 @@ fun FolderCard(
                 )
             }
 
-            // Expanded links list
             if (isExpanded && links.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 links.forEach { link ->
-                    LinkItemInFolder(
+                    LinkCard(
                         link = link,
-                        onClick = { onLinkClick(link.id) }
+                        onClick = {
+                            onLinkClick(link.id)
+                        },
+                        onLongPress = {
+                            onLinkLongPress(link.id)
+                        },
+                        isSelected = selectedLinks.contains(link.id),
+                        isSelectionMode = isSelectionMode,
+                        onFavoriteClick = { onFavoriteClick(link) },
+                        onMoreClick = { },
+                        onCopyClick = { onCopyClick(link) },
+                        onShareClick = { onShareClick(link) },
+                        onDeleteClick = { onDeleteClick(link) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun LinkItemInFolder(
-    link: Link,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Link,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = link.title ?: "Untitled",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (link.description != null) {
-                    Text(
-                        text = link.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            if (link.isFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Favorite",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
             }
         }
     }

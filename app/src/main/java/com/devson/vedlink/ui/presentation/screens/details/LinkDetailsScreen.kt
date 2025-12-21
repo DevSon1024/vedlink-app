@@ -163,9 +163,9 @@ fun LinkDetailsScreen(
                     // Title with Long Press to Copy
                     Text(
                         text = link.title ?: "No Title",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = 12.dp)
                             .combinedClickable(
                                 onClick = {},
                                 onLongClick = {

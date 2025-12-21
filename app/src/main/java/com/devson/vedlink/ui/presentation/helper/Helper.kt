@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import com.devson.vedlink.domain.model.Link
-import kotlin.collections.forEach
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,7 +18,11 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SelectionTopBar(
     selectedCount: Int,
+    totalCount: Int = 0,
+    allSelected: Boolean = false,
+    favoriteStatus: FavoriteStatus = FavoriteStatus.MIXED,
     onClose: () -> Unit,
+    onSelectAll: () -> Unit = {},
     onShare: () -> Unit,
     onFavorite: () -> Unit,
     onDelete: () -> Unit
@@ -40,6 +43,17 @@ fun SelectionTopBar(
             }
         },
         actions = {
+            // Select All / Deselect All
+            if (totalCount > 0) {
+                IconButton(onClick = onSelectAll) {
+                    Icon(
+                        imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                        contentDescription = if (allSelected) "Deselect all" else "Select all",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             IconButton(onClick = onShare) {
                 Icon(
                     imageVector = Icons.Default.Share,
@@ -47,13 +61,31 @@ fun SelectionTopBar(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Toggle favorite",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+            // Dynamic Favorite Icon based on status
+            if (favoriteStatus != FavoriteStatus.HIDDEN) {
+                IconButton(onClick = onFavorite) {
+                    Icon(
+                        imageVector = when (favoriteStatus) {
+                            FavoriteStatus.ALL_FAVORITED -> Icons.Default.HeartBroken
+                            FavoriteStatus.NONE_FAVORITED -> Icons.Default.Favorite
+                            FavoriteStatus.MIXED -> Icons.Default.Favorite
+                            FavoriteStatus.HIDDEN -> Icons.Default.Favorite // Won't be shown
+                        },
+                        contentDescription = when (favoriteStatus) {
+                            FavoriteStatus.ALL_FAVORITED -> "Remove from favorites"
+                            FavoriteStatus.NONE_FAVORITED -> "Add to favorites"
+                            FavoriteStatus.MIXED -> "Add to favorites"
+                            FavoriteStatus.HIDDEN -> ""
+                        },
+                        tint = when (favoriteStatus) {
+                            FavoriteStatus.ALL_FAVORITED -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
+
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
@@ -66,6 +98,13 @@ fun SelectionTopBar(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     )
+}
+
+enum class FavoriteStatus {
+    ALL_FAVORITED,      // All selected links are favorited - show HeartBroken icon
+    NONE_FAVORITED,     // None of the selected links are favorited - show Favorite icon
+    MIXED,              // Some are favorited, some aren't - show Favorite icon
+    HIDDEN              // Don't show favorite icon at all
 }
 
 @Composable
@@ -151,4 +190,18 @@ fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Link", text)
     clipboard.setPrimaryClip(clip)
+}
+
+// Helper function to determine favorite status
+fun getFavoriteStatus(selectedLinks: List<Link>, hasMixedContext: Boolean = false): FavoriteStatus {
+    if (selectedLinks.isEmpty()) return FavoriteStatus.HIDDEN
+
+    val favoritedCount = selectedLinks.count { it.isFavorite }
+
+    return when {
+        hasMixedContext && favoritedCount > 0 -> FavoriteStatus.HIDDEN
+        favoritedCount == selectedLinks.size -> FavoriteStatus.ALL_FAVORITED
+        favoritedCount == 0 -> FavoriteStatus.NONE_FAVORITED
+        else -> FavoriteStatus.MIXED
+    }
 }

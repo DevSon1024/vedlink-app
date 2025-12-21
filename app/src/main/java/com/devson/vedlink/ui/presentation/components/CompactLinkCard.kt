@@ -281,7 +281,7 @@ fun LinkOptionsMenu(
                         tint = if (isFavorite) Color(0xFFFF4081) else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                        text = if (isFavorite) "Remove Favorite" else "Add to Favorites",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

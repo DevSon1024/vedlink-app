@@ -48,7 +48,6 @@ class HomeViewModel @Inject constructor(
 
     private fun loadPreferences() {
         viewModelScope.launch {
-            // Load view mode preference
             themePreferences.isGridView.collect { isGrid ->
                 _uiState.update { it.copy(isGridView = isGrid) }
             }
@@ -89,14 +88,63 @@ class HomeViewModel @Inject constructor(
 
     fun deleteLink(link: Link) {
         viewModelScope.launch {
-            deleteLinkUseCase(link)
-            _uiEvent.emit(HomeUiEvent.ShowSuccess("Link deleted"))
+            try {
+                deleteLinkUseCase(link)
+                _uiEvent.emit(HomeUiEvent.ShowSuccess("Link deleted"))
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to delete link"))
+            }
+        }
+    }
+
+    fun deleteLinks(linkIds: List<Int>) {
+        viewModelScope.launch {
+            try {
+                val linksToDelete = _uiState.value.links.filter { it.id in linkIds }
+                linksToDelete.forEach { link ->
+                    deleteLinkUseCase(link)
+                }
+                _uiEvent.emit(HomeUiEvent.ShowSuccess("${linkIds.size} link(s) deleted"))
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to delete links"))
+            }
         }
     }
 
     fun toggleFavorite(id: Int, isFavorite: Boolean) {
         viewModelScope.launch {
-            toggleFavoriteUseCase(id, isFavorite)
+            try {
+                toggleFavoriteUseCase(id, isFavorite)
+                val message = if (!isFavorite) "Added to favorites" else "Removed from favorites"
+                _uiEvent.emit(HomeUiEvent.ShowSuccess(message))
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to update favorite"))
+            }
+        }
+    }
+
+    fun toggleFavoriteMultiple(linkIds: List<Int>) {
+        viewModelScope.launch {
+            try {
+                val selectedLinksData = _uiState.value.links.filter { it.id in linkIds }
+                val shouldBeFavorite = selectedLinksData.any { !it.isFavorite }
+
+                linkIds.forEach { linkId ->
+                    val link = _uiState.value.links.find { it.id == linkId }
+                    link?.let {
+                        toggleFavoriteUseCase(linkId, !shouldBeFavorite)
+                    }
+                }
+
+                val message = if (shouldBeFavorite) {
+                    "${linkIds.size} link(s) added to favorites"
+                } else {
+                    "${linkIds.size} link(s) removed from favorites"
+                }
+                _uiEvent.emit(HomeUiEvent.ShowSuccess(message))
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to update favorites"))
+            }
         }
     }
 
@@ -137,7 +185,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val newGridValue = !_uiState.value.isGridView
             _uiState.update { it.copy(isGridView = newGridValue) }
-            // Persist the preference
             themePreferences.setGridView(newGridValue)
         }
     }

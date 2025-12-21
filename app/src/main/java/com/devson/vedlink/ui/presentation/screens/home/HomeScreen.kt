@@ -2,7 +2,6 @@ package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -37,7 +36,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf<Link?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Selection mode state
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -65,13 +64,11 @@ fun HomeScreen(
         }
     }
 
-    // Function to exit selection mode
     fun exitSelectionMode() {
         isSelectionMode = false
         selectedLinks = emptySet()
     }
 
-    // Function to handle long press
     fun handleLongPress(linkId: Int) {
         if (!isSelectionMode) {
             isSelectionMode = true
@@ -79,7 +76,6 @@ fun HomeScreen(
         }
     }
 
-    // Function to handle click in selection mode
     fun handleSelectionClick(linkId: Int) {
         selectedLinks = if (selectedLinks.contains(linkId)) {
             val newSelection = selectedLinks - linkId
@@ -92,42 +88,43 @@ fun HomeScreen(
         }
     }
 
+    fun handleSelectAll() {
+        if (selectedLinks.size == uiState.links.size) {
+            exitSelectionMode()
+        } else {
+            selectedLinks = uiState.links.map { it.id }.toSet()
+        }
+    }
+
+    // Calculate favorite status
+    val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
+    val favoriteStatus = getFavoriteStatus(selectedLinksData)
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 Column {
                     if (isSelectionMode) {
-                        // Selection Mode Top Bar
                         SelectionTopBar(
                             selectedCount = selectedLinks.size,
+                            totalCount = uiState.links.size,
+                            allSelected = selectedLinks.size == uiState.links.size,
+                            favoriteStatus = favoriteStatus,
                             onClose = { exitSelectionMode() },
+                            onSelectAll = { handleSelectAll() },
                             onShare = {
-                                val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
                                 shareMultipleLinks(context, selectedLinksData)
                                 exitSelectionMode()
                             },
                             onFavorite = {
-                                selectedLinks.forEach { linkId ->
-                                    val link = uiState.links.find { it.id == linkId }
-                                    link?.let {
-                                        viewModel.toggleFavorite(it.id, it.isFavorite)
-                                    }
-                                }
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "${selectedLinks.size} link(s) updated",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
+                                viewModel.toggleFavoriteMultiple(selectedLinks.toList())
                                 exitSelectionMode()
                             },
                             onDelete = {
-                                val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
-                                showDeleteDialog = selectedLinksData.firstOrNull()
+                                showDeleteDialog = true
                             }
                         )
                     } else {
-                        // Normal Top Bar
                         TopAppBar(
                             title = {
                                 Text(
@@ -228,7 +225,7 @@ fun HomeScreen(
                                     viewModel.toggleFavorite(link.id, link.isFavorite)
                                 },
                                 onDeleteClick = { link ->
-                                    showDeleteDialog = link
+                                    viewModel.deleteLink(link)
                                 },
                                 onCopyClick = { link ->
                                     copyToClipboard(context, link.url)
@@ -291,31 +288,18 @@ fun HomeScreen(
         )
     }
 
-    showDeleteDialog?.let { link ->
-        if (isSelectionMode && selectedLinks.isNotEmpty()) {
-            MultiDeleteConfirmationDialog(
-                count = selectedLinks.size,
-                onDismiss = {
-                    showDeleteDialog = null
-                },
-                onConfirm = {
-                    selectedLinks.forEach { linkId ->
-                        val linkToDelete = uiState.links.find { it.id == linkId }
-                        linkToDelete?.let { viewModel.deleteLink(it) }
-                    }
-                    showDeleteDialog = null
-                    exitSelectionMode()
-                }
-            )
-        } else {
-            DeleteConfirmationDialog(
-                onDismiss = { showDeleteDialog = null },
-                onConfirm = {
-                    viewModel.deleteLink(link)
-                    showDeleteDialog = null
-                }
-            )
-        }
+    if (showDeleteDialog && selectedLinks.isNotEmpty()) {
+        MultiDeleteConfirmationDialog(
+            count = selectedLinks.size,
+            onDismiss = {
+                showDeleteDialog = false
+            },
+            onConfirm = {
+                viewModel.deleteLinks(selectedLinks.toList())
+                showDeleteDialog = false
+                exitSelectionMode()
+            }
+        )
     }
 }
 
@@ -499,52 +483,4 @@ fun EmptyState(modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center
         )
     }
-}
-
-@Composable
-fun DeleteConfirmationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(28.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "Delete Link?",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Text(
-                text = "Are you sure you want to delete this link? This action cannot be undone.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        shape = RoundedCornerShape(20.dp)
-    )
 }
