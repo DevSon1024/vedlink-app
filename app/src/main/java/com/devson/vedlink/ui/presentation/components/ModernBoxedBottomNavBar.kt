@@ -61,7 +61,7 @@ fun ModernBoxedBottomNavBar(
             ModernBoxedNavItem(
                 icon = Icons.Outlined.FavoriteBorder,
                 selectedIcon = Icons.Filled.Favorite,
-                label = "Links",
+                label = "Favourite",
                 isSelected = currentRoute == Screen.Favorites.route,
                 onClick = { onNavigate(Screen.Favorites.route) }
             )
@@ -75,9 +75,9 @@ fun ModernBoxedBottomNavBar(
             )
 
             ModernBoxedNavItem(
-                icon = Icons.Outlined.MoreHoriz,
-                selectedIcon = Icons.Filled.MoreHoriz,
-                label = "More",
+                icon = Icons.Outlined.Settings,
+                selectedIcon = Icons.Filled.Settings,
+                label = "Settings",
                 isSelected = currentRoute == Screen.Settings.route,
                 onClick = { onNavigate(Screen.Settings.route) }
             )
