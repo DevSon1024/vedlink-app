@@ -131,13 +131,6 @@ fun SettingsScreen(
             // Appearance Section
             SettingsSection(title = "Appearance")
 
-            SettingsSwitchItem(
-                icon = Icons.Default.DarkMode,
-                title = "Dark Mode",
-                subtitle = "Use dark theme",
-                checked = uiState.isDarkMode,
-                onCheckedChange = { viewModel.toggleDarkMode() }
-            )
             SettingsItem(
                 icon = Icons.Default.Palette,
                 title = "Look & feel",

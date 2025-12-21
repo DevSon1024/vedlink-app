@@ -44,7 +44,12 @@ fun ModernBoxedBottomNavBar(
                 )
                 .clip(RoundedCornerShape(30.dp))
                 .background(
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
+                        )
+                    )
                 )
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,

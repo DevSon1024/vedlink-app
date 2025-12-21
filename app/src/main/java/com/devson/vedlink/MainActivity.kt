@@ -54,11 +54,12 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
                 ) {
+                    @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = MaterialTheme.colorScheme.background,
                         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-                    ) { paddingValues ->
+                    ) {
                         NavGraph(
                             navController = navController,
                             onNavigateToDetails = { linkId ->

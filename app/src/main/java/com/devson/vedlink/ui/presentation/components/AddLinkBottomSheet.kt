@@ -195,7 +195,7 @@ fun EnhancedAddLinkBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Recent Links (${recentLinks.size})",
+                        text = "Recent ${recentLinks.size} Links",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
