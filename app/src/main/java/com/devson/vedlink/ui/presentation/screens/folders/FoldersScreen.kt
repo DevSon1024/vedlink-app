@@ -337,7 +337,12 @@ fun FoldersScreen(
                         ) {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 16.dp,
+                                    bottom = 120.dp  // ← Updated
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -366,7 +371,7 @@ fun FoldersScreen(
                                     start = 16.dp,
                                     end = 16.dp,
                                     top = 12.dp,
-                                    bottom = 100.dp
+                                    bottom = 120.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
