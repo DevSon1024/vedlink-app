@@ -212,15 +212,6 @@ fun SettingsScreen(
                 onClick = onNavigateToAbout
             )
 
-            SettingsItem(
-                icon = Icons.Default.Policy,
-                title = "Privacy Policy",
-                subtitle = "How we handle your data",
-                onClick = {
-                    openPrivacyPolicy(context)
-                }
-            )
-
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
