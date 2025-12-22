@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.widget.Toast
+import com.devson.vedlink.domain.model.SaveStatus
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.domain.util.LinkExtractor
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,7 +37,6 @@ class LinkSaveService : Service() {
         if (!sharedText.isNullOrBlank()) {
             serviceScope.launch {
                 try {
-                    // Extract all URLs from the shared text
                     val urls = linkExtractor.extractUrls(sharedText)
 
                     if (urls.isEmpty()) {
@@ -44,46 +44,35 @@ class LinkSaveService : Service() {
                         return@launch
                     }
 
-                    // Save all links and track results
-                    var savedCount = 0
-                    var duplicateCount = 0
+                    var newlySavedCount = 0
+                    var alreadyExistingCount = 0
                     var errorCount = 0
 
+                    // Process each URL independently
                     urls.forEach { url ->
-                        val result = saveLinkUseCase(url)
-                        result
-                            .onSuccess { linkId ->
-                                // Check if it's a new link or existing (duplicate)
-                                if (linkId > 0) {
-                                    savedCount++
+                        try {
+                            val result = saveLinkUseCase(url, checkDuplicate = true)
+                            result.onSuccess { saveResult ->
+                                when (saveResult.status) {
+                                    SaveStatus.NEWLY_SAVED -> newlySavedCount++
+                                    SaveStatus.ALREADY_EXISTS -> alreadyExistingCount++
                                 }
+                            }.onFailure {
+                                errorCount++
                             }
-                            .onFailure { error ->
-                                if (error is LinkAlreadyExistsException) {
-                                    duplicateCount++
-                                } else {
-                                    errorCount++
-                                }
-                            }
-                    }
-
-                    // Show appropriate message based on results
-                    val message = when {
-                        urls.size == 1 && duplicateCount == 1 -> "Link Already Available"
-                        urls.size == 1 && savedCount == 1 -> "Link Saved"
-                        urls.size > 1 && duplicateCount == urls.size -> "All Links Already Available"
-                        urls.size > 1 && savedCount > 0 -> {
-                            if (duplicateCount > 0) {
-                                "$savedCount Links Saved ($duplicateCount already available)"
-                            } else {
-                                "$savedCount Links Saved"
-                            }
+                        } catch (e: Exception) {
+                            errorCount++
                         }
-                        errorCount > 0 -> "Failed to save some links"
-                        else -> "Links processed"
                     }
 
-                    showToastAndStop(message, startId)
+                    val message = buildResultMessage(
+                        totalUrls = urls.size,
+                        newlySaved = newlySavedCount,
+                        alreadyExisting = alreadyExistingCount,
+                        errors = errorCount
+                    )
+
+                    showToastAndStop(message, startId, isError = errorCount > 0 && newlySavedCount == 0)
 
                 } catch (e: Exception) {
                     showToastAndStop(
@@ -100,6 +89,34 @@ class LinkSaveService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun buildResultMessage(
+        totalUrls: Int,
+        newlySaved: Int,
+        alreadyExisting: Int,
+        errors: Int
+    ): String {
+        return when {
+            totalUrls == 1 -> {
+                when {
+                    newlySaved == 1 -> "Link Saved"
+                    alreadyExisting == 1 -> "Link Already Available"
+                    else -> "Failed to save link"
+                }
+            }
+            else -> {
+                when {
+                    alreadyExisting == totalUrls -> "All Links Already Available"
+                    newlySaved == totalUrls -> "$newlySaved Links Saved"
+                    newlySaved > 0 && alreadyExisting > 0 && errors == 0 -> {
+                        "$newlySaved Links Saved ($alreadyExisting already available)"
+                    }
+                    newlySaved > 0 -> "$newlySaved Links Saved"
+                    else -> "Failed to save links"
+                }
+            }
+        }
+    }
+
     private fun showToastAndStop(message: String, startId: Int, isError: Boolean = false) {
         mainHandler.post {
             Toast.makeText(
@@ -108,7 +125,6 @@ class LinkSaveService : Service() {
                 if (isError) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
             ).show()
 
-            // Delay service stop to ensure toast is displayed
             mainHandler.postDelayed({
                 stopSelf(startId)
             }, 500)
@@ -123,10 +139,5 @@ class LinkSaveService : Service() {
 
     companion object {
         const val EXTRA_TEXT = "extra_text"
-        @Deprecated("Use EXTRA_TEXT instead", ReplaceWith("EXTRA_TEXT"))
-        const val EXTRA_URL = "extra_url"
     }
 }
-
-// Custom exception for duplicate links
-class LinkAlreadyExistsException(message: String) : Exception(message)

@@ -3,37 +3,38 @@ package com.devson.vedlink.domain.usecase
 import android.net.Uri
 import android.util.Patterns
 import com.devson.vedlink.data.repository.LinkRepository
-import com.devson.vedlink.data.service.LinkAlreadyExistsException
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.model.SaveResult
+import com.devson.vedlink.domain.model.SaveStatus
 import javax.inject.Inject
 
 class SaveLinkUseCase @Inject constructor(
     private val repository: LinkRepository,
     private val workManagerHelper: WorkManagerHelper
 ) {
-    suspend operator fun invoke(url: String): Result<Long> {
+    suspend operator fun invoke(url: String, checkDuplicate: Boolean = false): Result<SaveResult> {
         return try {
-            // Clean and validate URL
             val cleanUrl = cleanUrl(url)
 
             if (!isValidUrl(cleanUrl)) {
                 return Result.failure(IllegalArgumentException("Invalid URL format"))
             }
 
-            // Check if link already exists
             val existingLink = repository.getLinkByUrl(cleanUrl)
             if (existingLink != null) {
-                // Return failure with custom exception to indicate duplicate
-                return Result.failure(
-                    LinkAlreadyExistsException("Link already saved")
+                return Result.success(
+                    SaveResult(
+                        linkId = existingLink.id.toLong(),
+                        status = SaveStatus.ALREADY_EXISTS
+                    )
                 )
             }
 
             val domain = extractDomain(cleanUrl)
             val link = Link(
                 url = cleanUrl,
-                title = domain, // Temporary title until metadata is fetched
+                title = domain,
                 description = null,
                 imageUrl = null,
                 domain = domain
@@ -41,12 +42,16 @@ class SaveLinkUseCase @Inject constructor(
 
             val id = repository.insertLink(link)
 
-            // Only enqueue metadata fetch if link was actually inserted
             if (id > 0) {
                 workManagerHelper.enqueueLinkMetadataFetch(id.toInt())
             }
 
-            Result.success(id)
+            Result.success(
+                SaveResult(
+                    linkId = id,
+                    status = SaveStatus.NEWLY_SAVED
+                )
+            )
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -54,11 +59,6 @@ class SaveLinkUseCase @Inject constructor(
 
     private fun cleanUrl(url: String): String {
         var cleaned = url.trim()
-
-        // Remove common tracking parameters (optional - you can remove this if you want to keep full URLs)
-        // cleaned = cleaned.split("?").firstOrNull() ?: cleaned
-
-        // Add https:// if no scheme is present
         if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
             cleaned = "https://$cleaned"
         }
