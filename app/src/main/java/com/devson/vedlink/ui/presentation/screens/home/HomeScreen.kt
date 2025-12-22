@@ -1,6 +1,8 @@
 package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +47,12 @@ fun HomeScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // FAB rotation animation
+    val fabRotation by animateFloatAsState(
+        targetValue = if (showAddDialog) 45f else 0f,
+        animationSpec = tween(durationMillis = 300)
+    )
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -244,9 +253,16 @@ fun HomeScreen(
                     }
                 }
 
+                // Animated FAB - Google Keep style
                 if (!uiState.isSearchActive && !isSelectionMode) {
                     FloatingActionButton(
-                        onClick = { showAddDialog = true },
+                        onClick = {
+                            if (showAddDialog) {
+                                showAddDialog = false
+                            } else {
+                                showAddDialog = true
+                            }
+                        },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 100.dp)
@@ -260,8 +276,10 @@ fun HomeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "Add Link",
-                            modifier = Modifier.size(32.dp)
+                            contentDescription = if (showAddDialog) "Close" else "Add Link",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .rotate(fabRotation)
                         )
                     }
                 }

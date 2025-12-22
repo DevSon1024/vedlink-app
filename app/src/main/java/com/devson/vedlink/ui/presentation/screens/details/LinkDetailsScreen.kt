@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -114,117 +117,150 @@ fun LinkDetailsScreen(
             }
         } else {
             uiState.link?.let { link ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Image Section
-                    if (!link.imageUrl.isNullOrBlank()) {
-                        SectionHeader("Preview")
-                        Card(
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Scrollable Content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 80.dp) // Add padding for floating buttons
+                    ) {
+                        // Image Section
+                        if (!link.imageUrl.isNullOrBlank()) {
+                            SectionHeader("Preview")
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .wrapContentHeight()
+                                    .combinedClickable(
+                                        onClick = { showImageDialog = true },
+                                        onLongClick = {
+                                            scope.launch {
+                                                downloadImage(
+                                                    context = context,
+                                                    imageUrl = link.imageUrl,
+                                                    fileName = link.title ?: "image"
+                                                )
+                                            }
+                                        }
+                                    ),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(link.imageUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = link.title,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 200.dp, max = 500.dp),
+                                    contentScale = ContentScale.FillWidth,
+                                    onState = { state ->
+                                        if (state is AsyncImagePainter.State.Success) {
+                                            // Image loaded
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        // Title with Long Press to Copy
+                        SectionHeader("Title")
+                        Text(
+                            text = link.title ?: "No Title",
+                            style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp) // Adjusted padding
-                                .wrapContentHeight()
+                                .padding(horizontal = 16.dp)
                                 .combinedClickable(
-                                    onClick = { showImageDialog = true },
+                                    onClick = {},
                                     onLongClick = {
-                                        scope.launch {
-                                            downloadImage(
-                                                context = context,
-                                                imageUrl = link.imageUrl,
-                                                fileName = link.title ?: "image"
+                                        link.title?.let {
+                                            copyToClipboard(
+                                                clipboardManager,
+                                                context,
+                                                it,
+                                                "Title"
                                             )
                                         }
                                     }
                                 ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(link.imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = link.title,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 200.dp, max = 500.dp),
-                                contentScale = ContentScale.FillWidth,
-                                onState = { state ->
-                                    if (state is AsyncImagePainter.State.Success) {
-                                        // Image loaded
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Domain with Long Press to Copy
+                        SectionHeader("Domain")
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .combinedClickable(
+                                    onClick = {},
+                                    onLongClick = {
+                                        link.domain?.let {
+                                            copyToClipboard(
+                                                clipboardManager,
+                                                context,
+                                                it,
+                                                "Domain"
+                                            )
+                                        }
                                     }
-                                }
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = link.domain ?: "Unknown Domain",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
-                    }
 
-                    // Title with Long Press to Copy
-                    SectionHeader("Title")
-                    Text(
-                        text = link.title ?: "No Title",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp) // Aligned with header
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    link.title?.let {
-                                        copyToClipboard(
-                                            clipboardManager,
-                                            context,
-                                            it,
-                                            "Title"
-                                        )
-                                    }
-                                }
-                            ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        // Description with Long Press to Copy
+                        if (!link.description.isNullOrBlank()) {
+                            SectionHeader("Description")
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .combinedClickable(
+                                        onClick = {},
+                                        onLongClick = {
+                                            copyToClipboard(
+                                                clipboardManager,
+                                                context,
+                                                link.description,
+                                                "Description"
+                                            )
+                                        }
+                                    ),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Text(
+                                    text = link.description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
-                    // Domain with Long Press to Copy
-                    SectionHeader("Domain")
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    link.domain?.let {
-                                        copyToClipboard(
-                                            clipboardManager,
-                                            context,
-                                            it,
-                                            "Domain"
-                                        )
-                                    }
-                                }
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = link.domain ?: "Unknown Domain",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Description with Long Press to Copy
-                    if (!link.description.isNullOrBlank()) {
-                        SectionHeader("Description")
+                        // URL Card
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -235,145 +271,120 @@ fun LinkDetailsScreen(
                                         copyToClipboard(
                                             clipboardManager,
                                             context,
-                                            link.description,
-                                            "Description"
+                                            link.url,
+                                            "URL"
                                         )
                                     }
                                 ),
                             colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Link,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = link.url,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Metadata
+                        SectionHeader("Metadata")
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         ) {
-                            Text(
-                                text = link.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(16.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                MetadataRow(
+                                    icon = Icons.Default.CalendarToday,
+                                    label = "Created",
+                                    value = formatFullDate(link.createdAt)
+                                )
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                )
+                                MetadataRow(
+                                    icon = Icons.Default.Update,
+                                    label = "Updated",
+                                    value = formatFullDate(link.updatedAt)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
 
-                    // URL Card (Kept as is, no header requested, but useful context)
-                    Card(
+                    // Floating Action Buttons at Bottom
+                    Surface(
                         modifier = Modifier
+                            .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    copyToClipboard(
-                                        clipboardManager,
-                                        context,
-                                        link.url,
-                                        "URL"
-                                    )
-                                }
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
+                            .padding(16.dp),
+                        color = Color.Transparent
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Link,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = link.url,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                            // Open in Browser
+                            FilledTonalButton(
+                                onClick = {
+                                    openInBrowser(context, link.url)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open")
+                            }
+
+                            // Share
+                            OutlinedButton(
+                                onClick = {
+                                    shareLink(context, link.url)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Share")
+                            }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Metadata
-                    SectionHeader("Metadata")
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            MetadataRow(
-                                icon = Icons.Default.CalendarToday,
-                                label = "Created",
-                                value = formatFullDate(link.createdAt)
-                            )
-                            Divider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
-                            MetadataRow(
-                                icon = Icons.Default.Update,
-                                label = "Updated",
-                                value = formatFullDate(link.updatedAt)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Action Buttons
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Open in Browser (Simplified)
-                        FilledTonalButton(
-                            onClick = {
-                                openInBrowser(context, link.url)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.OpenInBrowser,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Open")
-                        }
-
-                        // Share
-                        OutlinedButton(
-                            onClick = {
-                                shareLink(context, link.url)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -536,7 +547,6 @@ private fun copyToClipboard(
 private fun openInBrowser(context: Context, url: String) {
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        // Simplified: Start the intent directly. Android will handle app selection (if installed) or browser.
         context.startActivity(intent)
     } catch (e: Exception) {
         Toast.makeText(context, "Failed to open link", Toast.LENGTH_SHORT).show()
@@ -565,12 +575,10 @@ private suspend fun downloadImage(
 
             val inputStream = connection.getInputStream()
 
-            // Create a clean filename
             val cleanFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
             val timestamp = System.currentTimeMillis()
             val finalFileName = "${cleanFileName}_${timestamp}.jpg"
 
-            // Use MediaStore for Android 10+ or direct file access for older versions
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 val values = android.content.ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, finalFileName)
