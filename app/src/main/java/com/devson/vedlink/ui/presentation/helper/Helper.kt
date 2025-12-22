@@ -161,9 +161,6 @@ fun shareMultipleLinks(context: Context, links: List<Link>) {
         appendLine("Check out these links:")
         appendLine()
         links.forEach { link ->
-            if (!link.title.isNullOrBlank()) {
-                appendLine(link.title)
-            }
             appendLine(link.url)
             appendLine()
         }
@@ -180,7 +177,7 @@ fun shareMultipleLinks(context: Context, links: List<Link>) {
 fun shareLink(context: Context, url: String, title: String?) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, url)
+        putExtra(Intent.EXTRA_TEXT, url ?: "Check this link")
         putExtra(Intent.EXTRA_TITLE, title ?: "Check out this link")
     }
     context.startActivity(Intent.createChooser(intent, "Share link via"))

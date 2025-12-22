@@ -3,6 +3,7 @@ package com.devson.vedlink.domain.usecase
 import android.net.Uri
 import android.util.Patterns
 import com.devson.vedlink.data.repository.LinkRepository
+import com.devson.vedlink.data.service.LinkAlreadyExistsException
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
 import javax.inject.Inject
@@ -23,7 +24,10 @@ class SaveLinkUseCase @Inject constructor(
             // Check if link already exists
             val existingLink = repository.getLinkByUrl(cleanUrl)
             if (existingLink != null) {
-                return Result.success(existingLink.id.toLong())
+                // Return failure with custom exception to indicate duplicate
+                return Result.failure(
+                    LinkAlreadyExistsException("Link already saved")
+                )
             }
 
             val domain = extractDomain(cleanUrl)
@@ -51,8 +55,8 @@ class SaveLinkUseCase @Inject constructor(
     private fun cleanUrl(url: String): String {
         var cleaned = url.trim()
 
-        // Remove common tracking parameters
-        cleaned = cleaned.split("?").firstOrNull() ?: cleaned
+        // Remove common tracking parameters (optional - you can remove this if you want to keep full URLs)
+        // cleaned = cleaned.split("?").firstOrNull() ?: cleaned
 
         // Add https:// if no scheme is present
         if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {

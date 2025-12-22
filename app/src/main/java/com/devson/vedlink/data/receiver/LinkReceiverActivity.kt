@@ -23,11 +23,11 @@ class LinkReceiverActivity : Activity() {
         when (intent?.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
-                    val sharedUrl = intent.getStringExtra(Intent.EXTRA_TEXT)
-                    if (!sharedUrl.isNullOrBlank()) {
-                        // Start service to save link
+                    val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (!sharedText.isNullOrBlank()) {
+                        // Start service to save links (can be single or multiple)
                         val serviceIntent = Intent(this, LinkSaveService::class.java).apply {
-                            putExtra(LinkSaveService.EXTRA_URL, sharedUrl)
+                            putExtra(LinkSaveService.EXTRA_TEXT, sharedText)
                         }
                         startService(serviceIntent)
                     }
