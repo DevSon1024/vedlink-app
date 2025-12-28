@@ -15,6 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -29,64 +32,81 @@ class LinkSaveService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    // Track active jobs to prevent premature service shutdown
+    private val activeJobCount = AtomicInteger(0)
+    private val processingMutex = Mutex()
+
+    // Queue for pending requests
+    private val pendingRequests = mutableListOf<String>()
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val sharedText = intent?.getStringExtra(EXTRA_TEXT)
 
         if (!sharedText.isNullOrBlank()) {
+            // Increment active job count immediately
+            activeJobCount.incrementAndGet()
+
             serviceScope.launch {
-                try {
-                    val urls = linkExtractor.extractUrls(sharedText)
-
-                    if (urls.isEmpty()) {
-                        showToastAndStop("No valid links found", startId)
-                        return@launch
-                    }
-
-                    var newlySavedCount = 0
-                    var alreadyExistingCount = 0
-                    var errorCount = 0
-
-                    // Process each URL independently
-                    urls.forEach { url ->
-                        try {
-                            val result = saveLinkUseCase(url, checkDuplicate = true)
-                            result.onSuccess { saveResult ->
-                                when (saveResult.status) {
-                                    SaveStatus.NEWLY_SAVED -> newlySavedCount++
-                                    SaveStatus.ALREADY_EXISTS -> alreadyExistingCount++
-                                }
-                            }.onFailure {
-                                errorCount++
-                            }
-                        } catch (e: Exception) {
-                            errorCount++
-                        }
-                    }
-
-                    val message = buildResultMessage(
-                        totalUrls = urls.size,
-                        newlySaved = newlySavedCount,
-                        alreadyExisting = alreadyExistingCount,
-                        errors = errorCount
-                    )
-
-                    showToastAndStop(message, startId, isError = errorCount > 0 && newlySavedCount == 0)
-
-                } catch (e: Exception) {
-                    showToastAndStop(
-                        "Failed to process links: ${e.message ?: "Unknown error"}",
-                        startId,
-                        isError = true
-                    )
+                processingMutex.withLock {
+                    processSharedText(sharedText, startId)
                 }
             }
         } else {
             showToastAndStop("No content to save", startId)
         }
 
-        return START_NOT_STICKY
+        // Use START_REDELIVER_INTENT to ensure reliability
+        return START_REDELIVER_INTENT
+    }
+
+    private suspend fun processSharedText(sharedText: String, startId: Int) {
+        try {
+            val urls = linkExtractor.extractUrls(sharedText)
+
+            if (urls.isEmpty()) {
+                showToastAndStop("No valid links found", startId)
+                return
+            }
+
+            var newlySavedCount = 0
+            var alreadyExistingCount = 0
+            var errorCount = 0
+
+            // Process each URL independently
+            urls.forEach { url ->
+                try {
+                    val result = saveLinkUseCase(url, checkDuplicate = true)
+                    result.onSuccess { saveResult ->
+                        when (saveResult.status) {
+                            SaveStatus.NEWLY_SAVED -> newlySavedCount++
+                            SaveStatus.ALREADY_EXISTS -> alreadyExistingCount++
+                        }
+                    }.onFailure {
+                        errorCount++
+                    }
+                } catch (e: Exception) {
+                    errorCount++
+                }
+            }
+
+            val message = buildResultMessage(
+                totalUrls = urls.size,
+                newlySaved = newlySavedCount,
+                alreadyExisting = alreadyExistingCount,
+                errors = errorCount
+            )
+
+            showToastAndStop(message, startId, isError = errorCount > 0 && newlySavedCount == 0)
+
+        } catch (e: Exception) {
+            showToastAndStop(
+                "Failed to process links: ${e.message ?: "Unknown error"}",
+                startId,
+                isError = true
+            )
+        }
     }
 
     private fun buildResultMessage(
@@ -119,15 +139,25 @@ class LinkSaveService : Service() {
 
     private fun showToastAndStop(message: String, startId: Int, isError: Boolean = false) {
         mainHandler.post {
-            Toast.makeText(
-                this@LinkSaveService,
-                message,
-                if (isError) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
-            ).show()
+            try {
+                Toast.makeText(
+                    this@LinkSaveService,
+                    message,
+                    if (isError) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                // Ignore if context is not available
+            }
 
-            mainHandler.postDelayed({
-                stopSelf(startId)
-            }, 500)
+            // Decrement active job count
+            val remainingJobs = activeJobCount.decrementAndGet()
+
+            // Only stop service when all jobs are complete
+            if (remainingJobs <= 0) {
+                mainHandler.postDelayed({
+                    stopSelf()
+                }, 300) // Reduced delay since we're tracking jobs
+            }
         }
     }
 
@@ -135,6 +165,7 @@ class LinkSaveService : Service() {
         super.onDestroy()
         serviceScope.cancel()
         mainHandler.removeCallbacksAndMessages(null)
+        activeJobCount.set(0)
     }
 
     companion object {
