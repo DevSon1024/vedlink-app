@@ -242,13 +242,16 @@ fun HomeScreen(
                                 },
                                 onShareClick = { link ->
                                     shareLink(context, link.url, link.title)
+                                },
+                                onRefreshClick = { link ->
+                                    viewModel.refreshLink(link.id)
                                 }
                             )
                         }
                     }
                 }
 
-                // Animated FAB - Disappears when Sheet opens
+                // Animated FAB
                 AnimatedVisibility(
                     visible = !uiState.isSearchActive && !isSelectionMode && !showAddDialog,
                     enter = scaleIn(animationSpec = tween(durationMillis = 300)),
@@ -379,7 +382,8 @@ fun LinksList(
     onFavoriteClick: (Link) -> Unit,
     onDeleteClick: (Link) -> Unit,
     onCopyClick: (Link) -> Unit,
-    onShareClick: (Link) -> Unit
+    onShareClick: (Link) -> Unit,
+    onRefreshClick: (Link) -> Unit
 ) {
     if (isGridView) {
         LazyVerticalGrid(
@@ -410,6 +414,7 @@ fun LinksList(
                     onFavoriteClick = { onFavoriteClick(link) },
                     onCopyClick = { onCopyClick(link) },
                     onShareClick = { onShareClick(link) },
+                    onRefreshClick = { onRefreshClick(link) },
                     onDeleteClick = { onDeleteClick(link) }
                 )
             }
@@ -442,6 +447,7 @@ fun LinksList(
                     onMoreClick = { onDeleteClick(link) },
                     onCopyClick = { onCopyClick(link) },
                     onShareClick = { onShareClick(link) },
+                    onRefreshClick = { onRefreshClick(link) },
                     onDeleteClick = { onDeleteClick(link) }
                 )
             }

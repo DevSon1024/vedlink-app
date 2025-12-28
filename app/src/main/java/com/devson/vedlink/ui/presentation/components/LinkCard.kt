@@ -35,6 +35,7 @@ fun LinkCard(
     onMoreClick: () -> Unit,
     onCopyClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
+    onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -258,6 +259,10 @@ fun LinkCard(
                         },
                         onShareClick = {
                             onShareClick()
+                            showMenu = false
+                        },
+                        onRefreshClick = {
+                            onRefreshClick()
                             showMenu = false
                         },
                         onDeleteClick = {

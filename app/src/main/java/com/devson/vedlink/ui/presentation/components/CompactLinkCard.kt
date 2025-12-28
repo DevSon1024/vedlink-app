@@ -31,6 +31,7 @@ fun CompactLinkCard(
     onFavoriteClick: () -> Unit,
     onCopyClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
+    onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -238,6 +239,10 @@ fun CompactLinkCard(
                                     onShareClick()
                                     showMenu = false
                                 },
+                                onRefreshClick = {
+                                    onRefreshClick()
+                                    showMenu = false
+                                },
                                 onDeleteClick = {
                                     onDeleteClick()
                                     showMenu = false
@@ -259,6 +264,7 @@ fun LinkOptionsMenu(
     onFavoriteClick: () -> Unit,
     onCopyClick: () -> Unit,
     onShareClick: () -> Unit,
+    onRefreshClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     DropdownMenu(
@@ -333,6 +339,28 @@ fun LinkOptionsMenu(
                 }
             },
             onClick = onShareClick
+        )
+
+        // Refresh
+        DropdownMenuItem(
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Refresh",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            onClick = onRefreshClick
         )
 
         HorizontalDivider()

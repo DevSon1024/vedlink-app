@@ -197,4 +197,11 @@ class HomeViewModel @Inject constructor(
             _uiEvent.emit(HomeUiEvent.ShowSuccess("Refreshing metadata..."))
         }
     }
+
+    fun refreshLink(linkId: Int) {
+        viewModelScope.launch {
+            workManagerHelper.enqueueLinkMetadataFetch(linkId)
+            _uiEvent.emit(HomeUiEvent.ShowSuccess("Refreshing link..."))
+        }
+    }
 }
