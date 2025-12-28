@@ -1,8 +1,9 @@
 package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,12 +48,6 @@ fun HomeScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    // FAB rotation animation
-    val fabRotation by animateFloatAsState(
-        targetValue = if (showAddDialog) 45f else 0f,
-        animationSpec = tween(durationMillis = 300)
-    )
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -254,23 +248,21 @@ fun HomeScreen(
                     }
                 }
 
-                // Animated FAB - Google Keep style
-                if (!uiState.isSearchActive && !isSelectionMode) {
+                // Animated FAB - Disappears when Sheet opens
+                AnimatedVisibility(
+                    visible = !uiState.isSearchActive && !isSelectionMode && !showAddDialog,
+                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
+                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 100.dp)
+                ) {
                     FloatingActionButton(
-                        onClick = {
-                            if (showAddDialog) {
-                                showAddDialog = false
-                            } else {
-                                showAddDialog = true
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 100.dp)
-                            .size(64.dp),
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier.size(64.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape, // Added CircleShape here
+                        shape = CircleShape,
                         elevation = FloatingActionButtonDefaults.elevation(
                             defaultElevation = 8.dp,
                             pressedElevation = 12.dp
@@ -278,10 +270,8 @@ fun HomeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = if (showAddDialog) "Close" else "Add Link",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .rotate(fabRotation)
+                            contentDescription = "Add Link",
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }

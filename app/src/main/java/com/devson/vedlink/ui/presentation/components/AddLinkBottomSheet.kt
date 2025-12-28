@@ -3,6 +3,8 @@ package com.devson.vedlink.ui.presentation.components
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -43,6 +46,17 @@ fun EnhancedAddLinkBottomSheet(
     // 1. Setup state and scope for animation
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+
+    // Animation state for FAB (Plus -> Cross)
+    var isLaunched by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isLaunched = true
+    }
+
+    val rotation by animateFloatAsState(
+        targetValue = if (isLaunched) 45f else 0f,
+        animationSpec = tween(durationMillis = 400, delayMillis = 100)
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -240,7 +254,7 @@ fun EnhancedAddLinkBottomSheet(
                 }
             }
 
-            // Close FAB
+            // Close FAB - Animates from Add (Plus) to Close (X)
             FloatingActionButton(
                 onClick = {
                     // 3. Trigger close animation, then dismiss
@@ -262,9 +276,11 @@ fun EnhancedAddLinkBottomSheet(
                 shape = CircleShape
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = Icons.Default.Add, // Starts as Add (+)
                     contentDescription = "Close",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier
+                        .size(32.dp)
+                        .rotate(rotation) // Rotates to 45 degrees (becoming X)
                 )
             }
         }
