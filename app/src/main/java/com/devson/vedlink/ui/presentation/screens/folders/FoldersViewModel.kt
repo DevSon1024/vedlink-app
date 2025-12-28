@@ -66,7 +66,11 @@ class FoldersViewModel @Inject constructor(
                     )
                 }
                 .collect { links ->
-                    val linksByDomain = links.groupBy { it.domain ?: "Unknown" }
+                    // Map domains to readable names BEFORE grouping
+                    val linksByDomain = links.groupBy { link ->
+                        mapToReadableDomain(link.domain ?: "Unknown")
+                    }
+
                     val folders = linksByDomain.map { (domain, domainLinks) ->
                         FolderItem(
                             domain = domain,
@@ -83,6 +87,24 @@ class FoldersViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    private fun mapToReadableDomain(domain: String): String {
+        return when (domain.lowercase()) {
+            "t.me" -> "Telegram"
+            "youtu.be", "youtube.com" -> "YouTube"
+            "instagr.am", "instagram.com" -> "Instagram"
+            "wa.me" -> "WhatsApp"
+            "twitter.com", "x.com" -> "X (Twitter)"
+            "linkedin.com", "lnkd.in" -> "LinkedIn"
+            "amzn.to", "amazon.com" -> "Amazon"
+            "fb.com", "facebook.com", "fb.watch" -> "Facebook"
+            "pin.it", "pinterest.com" -> "Pinterest"
+            "github.com" -> "GitHub"
+            "stackoverflow.com" -> "Stack Overflow"
+            "medium.com" -> "Medium"
+            else -> domain.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         }
     }
 
