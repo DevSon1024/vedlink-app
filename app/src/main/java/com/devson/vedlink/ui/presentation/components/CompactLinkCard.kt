@@ -297,6 +297,28 @@ fun LinkOptionsMenu(
 
         HorizontalDivider()
 
+        // Refresh
+        DropdownMenuItem(
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Refresh",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            onClick = onRefreshClick
+        )
+
         // Copy Link
         DropdownMenuItem(
             text = {
@@ -339,28 +361,6 @@ fun LinkOptionsMenu(
                 }
             },
             onClick = onShareClick
-        )
-
-        // Refresh
-        DropdownMenuItem(
-            text = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Refresh",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            },
-            onClick = onRefreshClick
         )
 
         HorizontalDivider()
