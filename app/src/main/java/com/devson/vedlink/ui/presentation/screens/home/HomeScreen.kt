@@ -1,61 +1,57 @@
 package com.devson.vedlink.ui.presentation.screens.home
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
-import com.devson.vedlink.ui.presentation.components.LinkCard
-import com.devson.vedlink.ui.presentation.components.ShimmerLinkCard
-import com.devson.vedlink.ui.presentation.components.CompactShimmerLinkCard
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import com.devson.vedlink.ui.presentation.helper.*
+import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToSavedLinks: () -> Unit,
+    onNavigateToFavorites: () -> Unit,
+    onNavigateToFolders: () -> Unit,
     onNavigateToDetails: (Int) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Selection mode state
-    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
-    var selectedLinksList by rememberSaveable { mutableStateOf<List<Int>>(emptyList()) }
-    var selectedLinks by remember(selectedLinksList) { mutableStateOf(selectedLinksList.toSet()) }
-
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
+    val greeting = remember {
+        val calendar = Calendar.getInstance()
+        when (calendar.get(Calendar.HOUR_OF_DAY)) {
+            in 0..11 -> "Good Morning"
+            in 12..16 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -66,6 +62,7 @@ fun HomeScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
+
                 is HomeUiEvent.ShowSuccess -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
@@ -76,457 +73,283 @@ fun HomeScreen(
         }
     }
 
-    fun exitSelectionMode() {
-        isSelectionMode = false
-        selectedLinksList = emptyList()
-    }
-
-    fun handleLongPress(linkId: Int) {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        if (!isSelectionMode) {
-            isSelectionMode = true
-            selectedLinksList = listOf(linkId)
-        }
-    }
-
-    fun handleSelectionClick(linkId: Int) {
-        selectedLinksList = if (selectedLinksList.contains(linkId)) {
-            val newSelection = selectedLinksList - linkId
-            if (newSelection.isEmpty()) {
-                isSelectionMode = false
-            }
-            newSelection
-        } else {
-            selectedLinksList + linkId
-        }
-    }
-
-    fun handleSelectAll() {
-        if (selectedLinksList.size == uiState.links.size) {
-            exitSelectionMode()
-        } else {
-            selectedLinksList = uiState.links.map { it.id }
-        }
-    }
-
-    // Calculate favorite status
-    val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
-    val favoriteStatus = getFavoriteStatus(selectedLinksData)
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                Column {
-                    if (isSelectionMode) {
-                        SelectionTopBar(
-                            selectedCount = selectedLinks.size,
-                            totalCount = uiState.links.size,
-                            allSelected = selectedLinks.size == uiState.links.size,
-                            favoriteStatus = favoriteStatus,
-                            onClose = { exitSelectionMode() },
-                            onSelectAll = { handleSelectAll() },
-                            onShare = {
-                                shareMultipleLinks(context, selectedLinksData)
-                                exitSelectionMode()
-                            },
-                            onFavorite = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.toggleFavoriteMultiple(selectedLinks.toList())
-                                exitSelectionMode()
-                            },
-                            onDelete = {
-                                showDeleteDialog = true
-                            }
-                        )
-                    } else {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = "Saved Links",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            },
-                            actions = {
-                                IconButton(onClick = { viewModel.refreshMetadata() }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Refresh metadata",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                IconButton(onClick = { viewModel.toggleSearchActive() }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "Search",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                IconButton(onClick = { viewModel.toggleViewMode() }) {
-                                    Icon(
-                                        imageVector = if (uiState.isGridView)
-                                            Icons.AutoMirrored.Filled.ViewList
-                                        else
-                                            Icons.Default.GridView,
-                                        contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    }
-
-                    AnimatedVisibility(visible = uiState.isSearchActive && !isSelectionMode) {
-                        SearchBar(
-                            query = uiState.searchQuery,
-                            onQueryChange = { viewModel.onSearchQueryChange(it) },
-                            onClose = { viewModel.toggleSearchActive() }
-                        )
-                    }
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.background
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    if (!uiState.isSearchActive && uiState.links.isNotEmpty() && !isSelectionMode) {
-                        ItemCountSection(
-                            itemCount = uiState.links.size,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    when {
-                        uiState.isLoading -> {
-                            if (uiState.isGridView) {
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
-                                    contentPadding = PaddingValues(
-                                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp
-                                    ),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    items(6) { CompactShimmerLinkCard() }
-                                }
-                            } else {
-                                LazyColumn(
-                                    contentPadding = PaddingValues(
-                                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp
-                                    ),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    items(6) { ShimmerLinkCard() }
-                                }
-                            }
-                        }
-                        uiState.links.isEmpty() -> {
-                            EmptyState(
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        else -> {
-                            LinksList(
-                                links = uiState.links,
-                                isGridView = uiState.isGridView,
-                                isSelectionMode = isSelectionMode,
-                                selectedLinks = selectedLinks,
-                                onLinkClick = { linkId ->
-                                    if (isSelectionMode) {
-                                        handleSelectionClick(linkId)
-                                    } else {
-                                        onNavigateToDetails(linkId)
-                                    }
-                                },
-                                onLinkLongPress = { linkId ->
-                                    handleLongPress(linkId)
-                                },
-                                onFavoriteClick = { link ->
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    viewModel.toggleFavorite(link.id, link.isFavorite)
-                                },
-                                onDeleteClick = { link ->
-                                    viewModel.deleteLink(link)
-                                },
-                                onCopyClick = { link ->
-                                    copyToClipboard(context, link.url)
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Link copied to clipboard",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                },
-                                onShareClick = { link ->
-                                    shareLink(context, link.url, link.title)
-                                },
-                                onRefreshClick = { link ->
-                                    viewModel.refreshLink(link.id)
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Animated FAB
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 120.dp)
+            ) {
                 AnimatedVisibility(
-                    visible = !uiState.isSearchActive && !isSelectionMode && !showAddDialog,
-                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
-                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 100.dp)
+                    visible = true,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
                 ) {
-                    FloatingActionButton(
-                        onClick = { showAddDialog = true },
-                        modifier = Modifier.size(64.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 8.dp,
-                            pressedElevation = 12.dp
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "$greeting 👋",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Add Link",
-                            modifier = Modifier.size(32.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Here's your link collection at a glance",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
                     }
                 }
+
+                AnimatedVisibility(
+                    visible = !uiState.isLoading,
+                    enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.9f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Saved Links",
+                            count = uiState.totalLinks,
+                            icon = Icons.Default.Bookmarks,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Favorites",
+                            count = uiState.totalFavorites,
+                            icon = Icons.Default.Favorite,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(tween(700)) + slideInHorizontally(tween(700)) { it / 2 }
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        Text(
+                            text = "Quick Actions",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            ActionCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Favorite,
+                                title = "Favorites",
+                                onClick = onNavigateToFavorites
+                            )
+                            ActionCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Folder,
+                                title = "Folders",
+                                onClick = onNavigateToFolders
+                            )
+                            ActionCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Search,
+                                title = "Search",
+                                onClick = onNavigateToSavedLinks
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                AnimatedVisibility(
+                    visible = uiState.recentLinks.isNotEmpty(),
+                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 }
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Recently Saved",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "See All",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { onNavigateToSavedLinks() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val listState = rememberLazyListState()
+                        LazyRow(
+                            state = listState,
+                            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(uiState.recentLinks, key = { it.id }) { link ->
+                                Box(modifier = Modifier.width(300.dp)) {
+                                    CompactLinkCard(
+                                        link = link,
+                                        onClick = { onNavigateToDetails(link.id) },
+                                        onLongPress = { },
+                                        isSelected = false,
+                                        isSelectionMode = false,
+                                        onFavoriteClick = { } // Keep it simple on home
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Animated FAB
+            AnimatedVisibility(
+                visible = !showAddDialog,
+                enter = scaleIn(animationSpec = tween(durationMillis = 300)),
+                exit = scaleOut(animationSpec = tween(durationMillis = 300)),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp)
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.size(64.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 12.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Add Link",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            if (showAddDialog) {
+                EnhancedAddLinkBottomSheet(
+                    recentLinks = uiState.recentLinks,
+                    onDismiss = { showAddDialog = false },
+                    onConfirm = { url ->
+                        viewModel.saveLink(url)
+                        showAddDialog = false
+                    },
+                    onAutoPaste = {}
+                )
             }
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-        )
-    }
-
-    if (showAddDialog) {
-        EnhancedAddLinkBottomSheet(
-            recentLinks = uiState.links.take(10),
-            onDismiss = { showAddDialog = false },
-            onConfirm = { url ->
-                viewModel.saveLink(url)
-                showAddDialog = false
-            },
-            onAutoPaste = {}
-        )
-    }
-
-    if (showDeleteDialog && selectedLinks.isNotEmpty()) {
-        MultiDeleteConfirmationDialog(
-            count = selectedLinks.size,
-            onDismiss = {
-                showDeleteDialog = false
-            },
-            onConfirm = {
-                viewModel.deleteLinks(selectedLinks.toList())
-                showDeleteDialog = false
-                exitSelectionMode()
-            }
-        )
     }
 }
 
 @Composable
-fun ItemCountSection(
-    itemCount: Int,
-    modifier: Modifier = Modifier
+fun StatCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    count: Int,
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = containerColor,
+        shadowElevation = 2.dp
     ) {
-        Text(
-            text = "$itemCount items in total",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClose: () -> Unit
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("Search links...") },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search"
-            )
-        },
-        trailingIcon = {
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close search"
-                )
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-        )
-    )
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun LinksList(
-    links: List<Link>,
-    isGridView: Boolean,
-    isSelectionMode: Boolean,
-    selectedLinks: Set<Int>,
-    onLinkClick: (Int) -> Unit,
-    onLinkLongPress: (Int) -> Unit,
-    onFavoriteClick: (Link) -> Unit,
-    onDeleteClick: (Link) -> Unit,
-    onCopyClick: (Link) -> Unit,
-    onShareClick: (Link) -> Unit,
-    onRefreshClick: (Link) -> Unit
-) {
-    if (isGridView) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 120.dp
-            ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(
-                items = links,
-                key = { it.id }
-            ) { link ->
-                CompactLinkCard(
-                    modifier = Modifier.animateItem(),
-                    link = link,
-                    onClick = {
-                        onLinkClick(link.id)
-                    },
-                    onLongPress = {
-                        onLinkLongPress(link.id)
-                    },
-                    isSelected = selectedLinks.contains(link.id),
-                    isSelectionMode = isSelectionMode,
-                    onFavoriteClick = { onFavoriteClick(link) },
-                    onCopyClick = { onCopyClick(link) },
-                    onShareClick = { onShareClick(link) },
-                    onRefreshClick = { onRefreshClick(link) },
-                    onDeleteClick = { onDeleteClick(link) }
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 120.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(
-                items = links,
-                key = { it.id }
-            ) { link ->
-                LinkCard(
-                    modifier = Modifier.animateItem(),
-                    link = link,
-                    onClick = {
-                        onLinkClick(link.id)
-                    },
-                    onLongPress = {
-                        onLinkLongPress(link.id)
-                    },
-                    isSelected = selectedLinks.contains(link.id),
-                    isSelectionMode = isSelectionMode,
-                    onFavoriteClick = { onFavoriteClick(link) },
-                    onMoreClick = { onDeleteClick(link) },
-                    onCopyClick = { onCopyClick(link) },
-                    onShareClick = { onShareClick(link) },
-                    onRefreshClick = { onRefreshClick(link) },
-                    onDeleteClick = { onDeleteClick(link) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(60.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.Start
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(contentColor.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Language,
+                    imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    tint = contentColor
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = contentColor
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor.copy(alpha = 0.8f)
+            )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "No Links Yet",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Start saving your favorite links\nby tapping the + button below",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+@Composable
+fun ActionCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

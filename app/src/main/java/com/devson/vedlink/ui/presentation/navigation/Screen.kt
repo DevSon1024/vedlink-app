@@ -2,8 +2,9 @@ package com.devson.vedlink.ui.presentation.navigation
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
-    object Favorites : Screen("favorites")
+    object SavedLinks : Screen("saved_links")
     object Folders : Screen("folders")
+    object Favorites : Screen("favorites")
     object Settings : Screen("settings")
     object About : Screen("about")
     object LookAndFeel : Screen("look_and_feel")

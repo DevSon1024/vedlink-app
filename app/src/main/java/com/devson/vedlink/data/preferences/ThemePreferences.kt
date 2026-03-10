@@ -20,29 +20,29 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class ThemePreferences @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // Existing preferences
+    // Legacy keys (kept for compatibility)
     private val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
     private val AUTO_FETCH_METADATA = booleanPreferencesKey("auto_fetch_metadata")
     private val IS_GRID_VIEW = booleanPreferencesKey("is_grid_view")
     private val VIEW_MODE = stringPreferencesKey("view_mode")
 
-    // New Look & Feel preferences
+    // Look & Feel preferences
     private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
     private val COLOR_SCHEME_KEY = intPreferencesKey("color_scheme")
     private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
     private val AMOLED_MODE_KEY = booleanPreferencesKey("amoled_mode")
 
-    // Existing flows
+    // New View Settings preferences
+    private val GRID_CELLS_COUNT_KEY = intPreferencesKey("grid_cells_count")
+    private val SORT_ORDER_KEY = stringPreferencesKey("sort_order")
+
+    // Flows
     val isDarkMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[IS_DARK_MODE] ?: false
     }
 
     val autoFetchMetadata: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[AUTO_FETCH_METADATA] ?: true
-    }
-
-    val isGridView: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[IS_GRID_VIEW] ?: false
     }
 
     val viewMode: Flow<ViewMode> = context.dataStore.data.map { preferences ->
@@ -53,7 +53,18 @@ class ThemePreferences @Inject constructor(
         }
     }
 
-    // New Look & Feel flows
+    // New View Settings flows
+    /** Number of columns in the grid. Range: 1..6. Default: 1 (list-style). */
+    val gridCellsCount: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[GRID_CELLS_COUNT_KEY] ?: 1).coerceIn(1, 6)
+    }
+
+    /** Sort order for links. "DESC" = Latest first, "ASC" = Oldest first. */
+    val sortOrder: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[SORT_ORDER_KEY] ?: "DESC"
+    }
+
+    // Look & Feel flows
     val themeMode: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[THEME_MODE_KEY] ?: 0 } // 0=System, 1=Light, 2=Dark
 
@@ -66,7 +77,7 @@ class ThemePreferences @Inject constructor(
     val amoledMode: Flow<Boolean> = context.dataStore.data
         .map { preferences -> preferences[AMOLED_MODE_KEY] ?: false }
 
-    // Existing functions
+    // Setter functions
     suspend fun setDarkMode(isDark: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_DARK_MODE] = isDark
@@ -79,13 +90,6 @@ class ThemePreferences @Inject constructor(
         }
     }
 
-    suspend fun setGridView(isGrid: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[IS_GRID_VIEW] = isGrid
-            preferences[VIEW_MODE] = if (isGrid) ViewMode.GRID.name else ViewMode.LIST.name
-        }
-    }
-
     suspend fun setViewMode(mode: ViewMode) {
         context.dataStore.edit { preferences ->
             preferences[VIEW_MODE] = mode.name
@@ -93,7 +97,21 @@ class ThemePreferences @Inject constructor(
         }
     }
 
-    // New Look & Feel functions
+    /** Set the number of columns (1–6). */
+    suspend fun setGridCellsCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[GRID_CELLS_COUNT_KEY] = count.coerceIn(1, 6)
+        }
+    }
+
+    /** Set sort order: "DESC" for Latest-Oldest, "ASC" for Oldest-Latest. */
+    suspend fun setSortOrder(order: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SORT_ORDER_KEY] = if (order == "ASC") "ASC" else "DESC"
+        }
+    }
+
+    // Look & Feel setters
     suspend fun setThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE_KEY] = mode

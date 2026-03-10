@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
+import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.domain.usecase.GetFavoriteLinksUseCase
 import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +27,8 @@ sealed class FavoritesUiEvent {
 class FavoritesViewModel @Inject constructor(
     private val getFavoriteLinksUseCase: GetFavoriteLinksUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val deleteLinkUseCase: DeleteLinkUseCase
+    private val deleteLinkUseCase: DeleteLinkUseCase,
+    private val saveLinkUseCase: SaveLinkUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FavoritesUiState())
@@ -143,6 +145,18 @@ class FavoritesViewModel @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    fun saveLink(url: String) {
+        viewModelScope.launch {
+            saveLinkUseCase(url)
+                .onSuccess {
+                    _uiEvent.emit(FavoritesUiEvent.ShowSuccess("Link saved successfully"))
+                }
+                .onFailure { exception ->
+                    _uiEvent.emit(FavoritesUiEvent.ShowError(exception.message ?: "Failed to save link"))
+                }
         }
     }
 }

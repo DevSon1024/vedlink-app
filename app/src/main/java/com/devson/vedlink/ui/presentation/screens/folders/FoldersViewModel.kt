@@ -6,6 +6,7 @@ import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.GetAllLinksUseCase
 import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
 import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
+import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -34,7 +35,8 @@ sealed class FoldersUiEvent {
 class FoldersViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val deleteLinkUseCase: DeleteLinkUseCase
+    private val deleteLinkUseCase: DeleteLinkUseCase,
+    private val saveLinkUseCase: SaveLinkUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoldersUiState())
@@ -207,5 +209,17 @@ class FoldersViewModel @Inject constructor(
 
     fun refreshFolders() {
         loadFolders()
+    }
+
+    fun saveLink(url: String) {
+        viewModelScope.launch {
+            saveLinkUseCase(url)
+                .onSuccess {
+                    _uiEvent.emit(FoldersUiEvent.ShowSuccess("Link saved successfully"))
+                }
+                .onFailure { exception ->
+                    _uiEvent.emit(FoldersUiEvent.ShowError(exception.message ?: "Failed to save link"))
+                }
+        }
     }
 }

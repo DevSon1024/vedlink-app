@@ -3,6 +3,9 @@ package com.devson.vedlink.ui.presentation.screens.favorites
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
@@ -24,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -44,6 +49,7 @@ fun FavoritesScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     // Event handling
     LaunchedEffect(Unit) {
@@ -290,6 +296,34 @@ fun FavoritesScreen(
                         }
                     }
                 }
+                
+                // Animated FAB
+                AnimatedVisibility(
+                    visible = !isSelectionMode && !showAddDialog,
+                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
+                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 100.dp)
+                ) {
+                    FloatingActionButton(
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier.size(64.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 8.dp,
+                            pressedElevation = 12.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add Link",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -311,6 +345,18 @@ fun FavoritesScreen(
                 showDeleteDialog = false
                 exitSelectionMode()
             }
+        )
+    }
+
+    if (showAddDialog) {
+        EnhancedAddLinkBottomSheet(
+            recentLinks = uiState.favoriteLinks.take(10),
+            onDismiss = { showAddDialog = false },
+            onConfirm = { url ->
+                viewModel.saveLink(url)
+                showAddDialog = false
+            },
+            onAutoPaste = {}
         )
     }
 }

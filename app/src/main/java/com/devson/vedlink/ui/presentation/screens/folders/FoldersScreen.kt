@@ -4,6 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +36,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -61,6 +65,7 @@ fun FoldersScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -432,6 +437,34 @@ fun FoldersScreen(
                         }
                     }
                 }
+                
+                // Animated FAB
+                AnimatedVisibility(
+                    visible = !isSelectionMode && !showAddDialog,
+                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
+                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 100.dp)
+                ) {
+                    FloatingActionButton(
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier.size(64.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 8.dp,
+                            pressedElevation = 12.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add Link",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -452,6 +485,18 @@ fun FoldersScreen(
                 showDeleteDialog = false
                 exitSelectionMode()
             }
+        )
+    }
+
+    if (showAddDialog) {
+        EnhancedAddLinkBottomSheet(
+            recentLinks = uiState.linksByDomain.values.flatten().sortedByDescending { it.createdAt }.take(10),
+            onDismiss = { showAddDialog = false },
+            onConfirm = { url ->
+                viewModel.saveLink(url)
+                showAddDialog = false
+            },
+            onAutoPaste = {}
         )
     }
 }

@@ -64,11 +64,11 @@ fun ModernBoxedBottomNavBar(
             )
 
             ModernBoxedNavItem(
-                icon = Icons.Outlined.FavoriteBorder,
-                selectedIcon = Icons.Filled.Favorite,
-                label = "Favourite",
-                isSelected = currentRoute == Screen.Favorites.route,
-                onClick = { onNavigate(Screen.Favorites.route) }
+                icon = Icons.Outlined.Bookmarks,
+                selectedIcon = Icons.Filled.Bookmarks,
+                label = "Saved",
+                isSelected = currentRoute == Screen.SavedLinks.route,
+                onClick = { onNavigate(Screen.SavedLinks.route) }
             )
 
             ModernBoxedNavItem(

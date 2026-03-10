@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                     // Show bottom bar only on main screens
                     if (currentRoute in listOf(
                             Screen.Home.route,
+                            Screen.SavedLinks.route,
                             Screen.Favorites.route,
                             Screen.Folders.route,
                             Screen.Settings.route
@@ -86,7 +87,7 @@ class MainActivity : ComponentActivity() {
                                 currentRoute = currentRoute,
                                 onNavigate = { route ->
                                     navController.navigate(route) {
-                                        popUpTo(Screen.Home.route) {
+                                        popUpTo(navController.graph.startDestinationId) {
                                             saveState = true
                                         }
                                         launchSingleTop = true

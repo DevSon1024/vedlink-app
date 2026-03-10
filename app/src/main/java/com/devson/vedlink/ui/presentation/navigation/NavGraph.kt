@@ -11,6 +11,7 @@ import com.devson.vedlink.ui.presentation.screens.details.LinkDetailsScreen
 import com.devson.vedlink.ui.presentation.screens.favorites.FavoritesScreen
 import com.devson.vedlink.ui.presentation.screens.folders.FoldersScreen
 import com.devson.vedlink.ui.presentation.screens.home.HomeScreen
+import com.devson.vedlink.ui.presentation.screens.savedlinks.SavedLinksScreen
 import com.devson.vedlink.ui.presentation.screens.settings.SettingsScreen
 import com.devson.vedlink.ui.presentation.screens.lookandfeel.LookAndFeelScreen
 
@@ -24,7 +25,16 @@ fun NavGraph(
         startDestination = Screen.Home.route
     ) {
         composable(Screen.Home.route) {
-            HomeScreen(onNavigateToDetails = onNavigateToDetails)
+            HomeScreen(
+                onNavigateToSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
+                onNavigateToFavorites = { navController.navigate(Screen.Favorites.route) },
+                onNavigateToFolders = { navController.navigate(Screen.Folders.route) },
+                onNavigateToDetails = onNavigateToDetails
+            )
+        }
+
+        composable(Screen.SavedLinks.route) {
+            SavedLinksScreen(onNavigateToDetails = onNavigateToDetails)
         }
 
         composable(Screen.Favorites.route) {
@@ -37,19 +47,14 @@ fun NavGraph(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                onNavigateToLookAndFeel = { navController.navigate(Screen.LookAndFeel.route) }
             )
         }
 
         composable(Screen.About.route) {
             AboutScreen(
                 onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateToAbout = { navController.navigate(Screen.About.route) },
-                onNavigateToLookAndFeel = { navController.navigate(Screen.LookAndFeel.route) }
             )
         }
 
