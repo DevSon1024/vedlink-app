@@ -1,5 +1,8 @@
 package com.devson.vedlink.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Link(
     val id: Int = 0,
     val url: String,

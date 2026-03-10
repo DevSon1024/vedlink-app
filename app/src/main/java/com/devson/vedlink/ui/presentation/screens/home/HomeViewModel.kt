@@ -41,9 +41,30 @@ class HomeViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<HomeUiEvent>()
     val uiEvent: SharedFlow<HomeUiEvent> = _uiEvent.asSharedFlow()
 
+    @kotlin.OptIn(kotlinx.coroutines.FlowPreview::class)
+    private val rawSearchQuery = MutableStateFlow("")
+
     init {
         loadLinks()
         loadPreferences()
+        
+        setupSearchDebouncing()
+    }
+    
+    @kotlin.OptIn(kotlinx.coroutines.FlowPreview::class)
+    private fun setupSearchDebouncing() {
+        viewModelScope.launch {
+            rawSearchQuery
+                .debounce(300)
+                .distinctUntilChanged()
+                .collect { query ->
+                    if (query.isNotEmpty()) {
+                        searchLinks(query)
+                    } else if (_uiState.value.isSearchActive) {
+                        loadLinks()
+                    }
+                }
+        }
     }
 
     private fun loadPreferences() {
@@ -162,11 +183,7 @@ class HomeViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        if (query.isNotEmpty()) {
-            searchLinks(query)
-        } else {
-            loadLinks()
-        }
+        rawSearchQuery.value = query
     }
 
     private fun searchLinks(query: String) {

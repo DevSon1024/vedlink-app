@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,12 +45,13 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
     // Selection mode state
-    var isSelectionMode by remember { mutableStateOf(false) }
-    var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedLinksList by rememberSaveable { mutableStateOf<List<Int>>(emptyList()) }
+    var selectedLinks by remember(selectedLinksList) { mutableStateOf(selectedLinksList.toSet()) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -76,34 +78,34 @@ fun HomeScreen(
 
     fun exitSelectionMode() {
         isSelectionMode = false
-        selectedLinks = emptySet()
+        selectedLinksList = emptyList()
     }
 
     fun handleLongPress(linkId: Int) {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         if (!isSelectionMode) {
             isSelectionMode = true
-            selectedLinks = setOf(linkId)
+            selectedLinksList = listOf(linkId)
         }
     }
 
     fun handleSelectionClick(linkId: Int) {
-        selectedLinks = if (selectedLinks.contains(linkId)) {
-            val newSelection = selectedLinks - linkId
+        selectedLinksList = if (selectedLinksList.contains(linkId)) {
+            val newSelection = selectedLinksList - linkId
             if (newSelection.isEmpty()) {
                 isSelectionMode = false
             }
             newSelection
         } else {
-            selectedLinks + linkId
+            selectedLinksList + linkId
         }
     }
 
     fun handleSelectAll() {
-        if (selectedLinks.size == uiState.links.size) {
+        if (selectedLinksList.size == uiState.links.size) {
             exitSelectionMode()
         } else {
-            selectedLinks = uiState.links.map { it.id }.toSet()
+            selectedLinksList = uiState.links.map { it.id }
         }
     }
 
