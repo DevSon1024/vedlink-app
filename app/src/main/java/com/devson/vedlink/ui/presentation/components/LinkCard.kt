@@ -19,9 +19,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.devson.vedlink.domain.model.Link
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -40,13 +44,18 @@ fun LinkCard(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongPress
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongPress()
+                }
             )
             .then(
                 if (isSelected) {
@@ -92,7 +101,11 @@ fun LinkCard(
                     // Background Image with overlay
                     if (!link.imageUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = link.imageUrl,
+                            model = ImageRequest.Builder(context)
+                                .data(link.imageUrl)
+                                .crossfade(true)
+                                .crossfade(500)
+                                .build(),
                             contentDescription = link.title,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
@@ -136,7 +149,11 @@ fun LinkCard(
                 ) {
                     if (!link.imageUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = link.imageUrl,
+                            model = ImageRequest.Builder(context)
+                                .data(link.imageUrl)
+                                .crossfade(true)
+                                .crossfade(500)
+                                .build(),
                             contentDescription = link.title,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -250,6 +267,7 @@ fun LinkCard(
                         onDismiss = { showMenu = false },
                         isFavorite = link.isFavorite,
                         onFavoriteClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onFavoriteClick()
                             showMenu = false
                         },

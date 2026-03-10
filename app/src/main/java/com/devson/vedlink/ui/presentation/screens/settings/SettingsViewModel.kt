@@ -158,6 +158,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    @OptIn(coil.annotation.ExperimentalCoilApi::class)
     fun clearCache(context: Context) {
         viewModelScope.launch {
             try {

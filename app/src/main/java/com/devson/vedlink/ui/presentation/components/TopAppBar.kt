@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +35,7 @@ fun VedLinkTopAppBar(
             }
             IconButton(onClick = onViewToggleClick) {
                 Icon(
-                    imageVector = if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                    imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                     contentDescription = if (isGridView) "List View" else "Grid View"
                 )
             }

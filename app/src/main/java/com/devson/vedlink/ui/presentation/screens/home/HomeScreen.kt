@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,11 +23,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
+import com.devson.vedlink.ui.presentation.components.ShimmerLinkCard
+import com.devson.vedlink.ui.presentation.components.CompactShimmerLinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
@@ -48,6 +53,7 @@ fun HomeScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -74,6 +80,7 @@ fun HomeScreen(
     }
 
     fun handleLongPress(linkId: Int) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         if (!isSelectionMode) {
             isSelectionMode = true
             selectedLinks = setOf(linkId)
@@ -121,6 +128,7 @@ fun HomeScreen(
                                 exitSelectionMode()
                             },
                             onFavorite = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 viewModel.toggleFavoriteMultiple(selectedLinks.toList())
                                 exitSelectionMode()
                             },
@@ -157,7 +165,7 @@ fun HomeScreen(
                                 IconButton(onClick = { viewModel.toggleViewMode() }) {
                                     Icon(
                                         imageVector = if (uiState.isGridView)
-                                            Icons.Default.ViewList
+                                            Icons.AutoMirrored.Filled.ViewList
                                         else
                                             Icons.Default.GridView,
                                         contentDescription = if (uiState.isGridView) "List View" else "Grid View",
@@ -197,11 +205,28 @@ fun HomeScreen(
 
                     when {
                         uiState.isLoading -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                            if (uiState.isGridView) {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(6) { CompactShimmerLinkCard() }
+                                }
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp
+                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(6) { ShimmerLinkCard() }
+                                }
                             }
                         }
                         uiState.links.isEmpty() -> {
@@ -226,6 +251,7 @@ fun HomeScreen(
                                     handleLongPress(linkId)
                                 },
                                 onFavoriteClick = { link ->
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.toggleFavorite(link.id, link.isFavorite)
                                 },
                                 onDeleteClick = { link ->
@@ -402,6 +428,7 @@ fun LinksList(
                 key = { it.id }
             ) { link ->
                 CompactLinkCard(
+                    modifier = Modifier.animateItem(),
                     link = link,
                     onClick = {
                         onLinkClick(link.id)
@@ -434,6 +461,7 @@ fun LinksList(
                 key = { it.id }
             ) { link ->
                 LinkCard(
+                    modifier = Modifier.animateItem(),
                     link = link,
                     onClick = {
                         onLinkClick(link.id)

@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -72,7 +73,7 @@ fun LinkDetailsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -117,12 +118,15 @@ fun LinkDetailsScreen(
             }
         } else {
             uiState.link?.let { link ->
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
                     // Scrollable Content
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = 80.dp) // Add padding for floating buttons
                     ) {
@@ -325,7 +329,7 @@ fun LinkDetailsScreen(
                                     label = "Created",
                                     value = formatFullDate(link.createdAt)
                                 )
-                                Divider(
+                                HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
                                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                 )

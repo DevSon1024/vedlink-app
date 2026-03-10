@@ -68,7 +68,9 @@ fun VedLinkTheme(
                 colorScheme.background
             }
 
+            @Suppress("DEPRECATION")
             window.statusBarColor = bgColor.toArgb()
+            @Suppress("DEPRECATION")
             window.navigationBarColor = bgColor.toArgb()
 
             val windowInsetsController = WindowCompat.getInsetsController(window, view)

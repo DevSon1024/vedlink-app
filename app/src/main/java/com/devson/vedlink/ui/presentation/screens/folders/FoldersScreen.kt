@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -167,7 +169,7 @@ fun FoldersScreen(
                                     selectedFolderDomain = null
                                     exitSelectionMode()
                                 }) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             }
                         },
@@ -175,7 +177,7 @@ fun FoldersScreen(
                             IconButton(onClick = { viewModel.toggleViewMode() }) {
                                 Icon(
                                     imageVector = if (uiState.isGridView)
-                                        Icons.Default.ViewList
+                                        Icons.AutoMirrored.Filled.ViewList
                                     else
                                         Icons.Default.GridView,
                                     contentDescription = if (uiState.isGridView) "List View" else "Grid View",
