@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,7 +54,10 @@ import java.util.*
 fun LinkDetailsScreen(
     linkId: Int,
     onNavigateBack: () -> Unit,
-    viewModel: LinkDetailsViewModel = hiltViewModel()
+    viewModel: LinkDetailsViewModel = hiltViewModel(),
+    pageText: String? = null,
+    onPreviousPage: (() -> Unit)? = null,
+    onNextPage: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -105,6 +110,97 @@ fun LinkDetailsScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
+        },
+        bottomBar = {
+            uiState.link?.let { link ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = if (pageText != null) Arrangement.SpaceBetween else Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (pageText != null) {
+                            IconButton(
+                                onClick = onPreviousPage ?: {},
+                                enabled = onPreviousPage != null
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Previous link",
+                                    tint = if (onPreviousPage != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = if (pageText != null) Modifier.weight(1f).padding(horizontal = 4.dp) else Modifier,
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FilledTonalButton(
+                                onClick = { openInBrowser(context, link.url) },
+                                modifier = Modifier.height(40.dp).then(if (pageText != null) Modifier.weight(1f) else Modifier),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Open", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+
+                            if (pageText != null) {
+                                Text(
+                                    text = pageText,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.width(16.dp))
+                            }
+
+                            FilledTonalButton(
+                                onClick = { shareLink(context, link.url) },
+                                modifier = Modifier.height(40.dp).then(if (pageText != null) Modifier.weight(1f) else Modifier),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Share", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+
+                        if (pageText != null) {
+                            IconButton(
+                                onClick = onNextPage ?: {},
+                                enabled = onNextPage != null
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Next link",
+                                    tint = if (onNextPage != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -121,14 +217,14 @@ fun LinkDetailsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(top = paddingValues.calculateTopPadding())
                 ) {
                     // Scrollable Content
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(bottom = 80.dp) // Add padding for floating buttons
+                            .padding(bottom = paddingValues.calculateBottomPadding() + 16.dp)
                     ) {
                         // Image Section
                         if (!link.imageUrl.isNullOrBlank()) {
@@ -342,52 +438,6 @@ fun LinkDetailsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    // Floating Action Buttons at Bottom
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        color = Color.Transparent
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Open in Browser
-                            FilledTonalButton(
-                                onClick = {
-                                    openInBrowser(context, link.url)
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInBrowser,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Open")
-                            }
-
-                            // Share
-                            OutlinedButton(
-                                onClick = {
-                                    shareLink(context, link.url)
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Share")
-                            }
-                        }
                     }
                 }
             }

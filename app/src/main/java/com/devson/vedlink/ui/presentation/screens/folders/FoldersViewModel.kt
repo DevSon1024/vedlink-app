@@ -10,6 +10,7 @@ import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.devson.vedlink.data.preferences.ThemePreferences
 import javax.inject.Inject
 
 data class FolderItem(
@@ -22,7 +23,9 @@ data class FoldersUiState(
     val folders: List<FolderItem> = emptyList(),
     val linksByDomain: Map<String, List<Link>> = emptyMap(),
     val isLoading: Boolean = false,
-    val isGridView: Boolean = true, // Default to Grid View
+    val gridCellsCount: Int = 2,
+    val sortOrder: String = "ASC",
+    val isPrefsLoaded: Boolean = false,
     val error: String? = null
 )
 
@@ -36,7 +39,8 @@ class FoldersViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deleteLinkUseCase: DeleteLinkUseCase,
-    private val saveLinkUseCase: SaveLinkUseCase
+    private val saveLinkUseCase: SaveLinkUseCase,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoldersUiState())
@@ -46,7 +50,53 @@ class FoldersViewModel @Inject constructor(
     val uiEvent: SharedFlow<FoldersUiEvent> = _uiEvent.asSharedFlow()
 
     init {
+        loadPreferences()
         loadFolders()
+    }
+
+    private fun loadPreferences() {
+        viewModelScope.launch {
+            themePreferences.folderGridCellsCount.collect { count ->
+                _uiState.update { it.copy(gridCellsCount = count) }
+                // Delay setting isPrefsLoaded until we have both, or just set it here since they're fast
+                if (!_uiState.value.isPrefsLoaded) {
+                    _uiState.update { it.copy(isPrefsLoaded = true) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            themePreferences.folderSortOrder.collect { order ->
+                val sortingChanged = _uiState.value.sortOrder != order && _uiState.value.isPrefsLoaded
+                _uiState.update { it.copy(sortOrder = order) }
+                if (sortingChanged) {
+                    resortFolders()
+                }
+            }
+        }
+    }
+
+    private fun resortFolders() {
+        _uiState.update { state ->
+            val order = state.sortOrder
+            val sorted = if (order == "ASC") {
+                state.folders.sortedBy { it.domain.lowercase() }
+            } else {
+                state.folders.sortedByDescending { it.domain.lowercase() }
+            }
+            state.copy(folders = sorted)
+        }
+    }
+
+    fun setGridCellsCount(count: Int) {
+        viewModelScope.launch {
+            themePreferences.setFolderGridCellsCount(count)
+        }
+    }
+
+    fun setSortOrder(order: String) {
+        viewModelScope.launch {
+            themePreferences.setFolderSortOrder(order)
+        }
     }
 
     private fun loadFolders() {
@@ -73,12 +123,18 @@ class FoldersViewModel @Inject constructor(
                         mapToReadableDomain(link.domain ?: "Unknown")
                     }
 
-                    val folders = linksByDomain.map { (domain, domainLinks) ->
+                    var folders = linksByDomain.map { (domain, domainLinks) ->
                         FolderItem(
                             domain = domain,
                             linkCount = domainLinks.size
                         )
-                    }.sortedByDescending { it.linkCount }
+                    }
+                    
+                    folders = if (_uiState.value.sortOrder == "ASC") {
+                        folders.sortedBy { it.domain.lowercase() }
+                    } else {
+                        folders.sortedByDescending { it.domain.lowercase() }
+                    }
 
                     _uiState.update {
                         it.copy(
@@ -110,9 +166,6 @@ class FoldersViewModel @Inject constructor(
         }
     }
 
-    fun toggleViewMode() {
-        _uiState.update { it.copy(isGridView = !it.isGridView) }
-    }
 
     fun toggleFavorite(linkId: Int, currentFavoriteStatus: Boolean) {
         viewModelScope.launch {

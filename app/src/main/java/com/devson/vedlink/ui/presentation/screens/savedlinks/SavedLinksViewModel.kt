@@ -17,7 +17,8 @@ data class SavedLinksUiState(
     val isSearchActive: Boolean = false,
     val searchQuery: String = "",
     val gridCellsCount: Int = 1,
-    val sortOrder: String = "DESC"  // "DESC" = Latest first, "ASC" = Oldest first
+    val sortOrder: String = "DESC",  // "DESC" = Latest first, "ASC" = Oldest first
+    val isPrefsLoaded: Boolean = false
 )
 
 sealed class SavedLinksUiEvent {
@@ -85,13 +86,25 @@ class SavedLinksViewModel @Inject constructor(
 
     private fun loadPreferences() {
         viewModelScope.launch {
-            themePreferences.gridCellsCount.collect { count ->
-                _uiState.update { it.copy(gridCellsCount = count) }
+            val initialGrid = themePreferences.gridCellsCount.first()
+            val initialSort = themePreferences.sortOrder.first()
+            _uiState.update {
+                it.copy(
+                    gridCellsCount = initialGrid,
+                    sortOrder = initialSort,
+                    isPrefsLoaded = true
+                )
             }
-        }
-        viewModelScope.launch {
-            themePreferences.sortOrder.collect { order ->
-                _uiState.update { it.copy(sortOrder = order) }
+
+            launch {
+                themePreferences.gridCellsCount.collect { count ->
+                    _uiState.update { it.copy(gridCellsCount = count) }
+                }
+            }
+            launch {
+                themePreferences.sortOrder.collect { order ->
+                    _uiState.update { it.copy(sortOrder = order) }
+                }
             }
         }
     }

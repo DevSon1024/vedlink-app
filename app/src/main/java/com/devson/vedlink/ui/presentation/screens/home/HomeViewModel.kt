@@ -2,6 +2,7 @@ package com.devson.vedlink.ui.presentation.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.GetAllLinksUseCase
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
@@ -14,7 +15,11 @@ data class HomeUiState(
     val recentLinks: List<Link> = emptyList(),
     val totalLinks: Int = 0,
     val totalFavorites: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    // Section visibility — driven by ThemePreferences
+    val showStats: Boolean = true,
+    val showQuickActions: Boolean = true,
+    val showRecentLinks: Boolean = true
 )
 
 sealed class HomeUiEvent {
@@ -25,7 +30,8 @@ sealed class HomeUiEvent {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,
-    private val saveLinkUseCase: SaveLinkUseCase
+    private val saveLinkUseCase: SaveLinkUseCase,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
@@ -36,6 +42,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadHomeData()
+        loadSectionPreferences()
     }
 
     private fun loadHomeData() {
@@ -45,10 +52,10 @@ class HomeViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false) }
                 _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Unknown error"))
             }.collect { links ->
-                val recent = links.sortedByDescending { it.createdAt }.take(4)
+                val recent = links.sortedByDescending { it.createdAt }.take(5)
                 val total = links.size
                 val favorites = links.count { it.isFavorite }
-                
+
                 _uiState.update {
                     it.copy(
                         recentLinks = recent,
@@ -57,6 +64,24 @@ class HomeViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
+            }
+        }
+    }
+
+    private fun loadSectionPreferences() {
+        viewModelScope.launch {
+            themePreferences.homeShowStats.collect { v ->
+                _uiState.update { it.copy(showStats = v) }
+            }
+        }
+        viewModelScope.launch {
+            themePreferences.homeShowQuickActions.collect { v ->
+                _uiState.update { it.copy(showQuickActions = v) }
+            }
+        }
+        viewModelScope.launch {
+            themePreferences.homeShowRecentLinks.collect { v ->
+                _uiState.update { it.copy(showRecentLinks = v) }
             }
         }
     }

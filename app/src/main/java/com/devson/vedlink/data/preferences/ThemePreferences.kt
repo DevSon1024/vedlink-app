@@ -32,9 +32,18 @@ class ThemePreferences @Inject constructor(
     private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
     private val AMOLED_MODE_KEY = booleanPreferencesKey("amoled_mode")
 
-    // New View Settings preferences
+    // View Settings preferences
     private val GRID_CELLS_COUNT_KEY = intPreferencesKey("grid_cells_count")
     private val SORT_ORDER_KEY = stringPreferencesKey("sort_order")
+
+    // Folder View Settings preferences
+    private val FOLDER_GRID_CELLS_COUNT_KEY = intPreferencesKey("folder_grid_cells_count")
+    private val FOLDER_SORT_ORDER_KEY = stringPreferencesKey("folder_sort_order")
+
+    // Home section visibility preferences
+    private val HOME_SHOW_STATS_KEY = booleanPreferencesKey("home_show_stats")
+    private val HOME_SHOW_QUICK_ACTIONS_KEY = booleanPreferencesKey("home_show_quick_actions")
+    private val HOME_SHOW_RECENT_LINKS_KEY = booleanPreferencesKey("home_show_recent_links")
 
     // Flows
     val isDarkMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -62,6 +71,27 @@ class ThemePreferences @Inject constructor(
     /** Sort order for links. "DESC" = Latest first, "ASC" = Oldest first. */
     val sortOrder: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[SORT_ORDER_KEY] ?: "DESC"
+    }
+
+    // Folder View Settings flows
+    val folderGridCellsCount: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[FOLDER_GRID_CELLS_COUNT_KEY] ?: 2).coerceIn(1, 6) // Default 2 for folders
+    }
+
+    /** Sort order for folders. "ASC" = A-Z, "DESC" = Z-A. */
+    val folderSortOrder: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[FOLDER_SORT_ORDER_KEY] ?: "ASC" // Default A-Z
+    }
+
+    // Home section visibility flows
+    val homeShowStats: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HOME_SHOW_STATS_KEY] ?: true
+    }
+    val homeShowQuickActions: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HOME_SHOW_QUICK_ACTIONS_KEY] ?: true
+    }
+    val homeShowRecentLinks: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HOME_SHOW_RECENT_LINKS_KEY] ?: true
     }
 
     // Look & Feel flows
@@ -111,6 +141,18 @@ class ThemePreferences @Inject constructor(
         }
     }
 
+    suspend fun setFolderGridCellsCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[FOLDER_GRID_CELLS_COUNT_KEY] = count.coerceIn(1, 6)
+        }
+    }
+
+    suspend fun setFolderSortOrder(order: String) {
+        context.dataStore.edit { preferences ->
+            preferences[FOLDER_SORT_ORDER_KEY] = if (order == "DESC") "DESC" else "ASC"
+        }
+    }
+
     // Look & Feel setters
     suspend fun setThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->
@@ -133,6 +175,25 @@ class ThemePreferences @Inject constructor(
     suspend fun setAmoledMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[AMOLED_MODE_KEY] = enabled
+        }
+    }
+
+    // Home section visibility setters
+    suspend fun setHomeShowStats(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HOME_SHOW_STATS_KEY] = show
+        }
+    }
+
+    suspend fun setHomeShowQuickActions(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HOME_SHOW_QUICK_ACTIONS_KEY] = show
+        }
+    }
+
+    suspend fun setHomeShowRecentLinks(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HOME_SHOW_RECENT_LINKS_KEY] = show
         }
     }
 }

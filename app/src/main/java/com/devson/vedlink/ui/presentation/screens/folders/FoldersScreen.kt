@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -66,6 +67,7 @@ fun FoldersScreen(
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showViewSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -179,13 +181,10 @@ fun FoldersScreen(
                             }
                         },
                         actions = {
-                            IconButton(onClick = { viewModel.toggleViewMode() }) {
+                            IconButton(onClick = { showViewSettings = true }) {
                                 Icon(
-                                    imageVector = if (uiState.isGridView)
-                                        Icons.AutoMirrored.Filled.ViewList
-                                    else
-                                        Icons.Default.GridView,
-                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                    imageVector = Icons.Default.DisplaySettings,
+                                    contentDescription = "View settings",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -219,12 +218,12 @@ fun FoldersScreen(
 
                         if (folderLinks.isNotEmpty()) {
                             AnimatedVisibility(
-                                visible = uiState.isGridView,
+                                visible = uiState.gridCellsCount > 1,
                                 enter = fadeIn(),
                                 exit = fadeOut()
                             ) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
+                                    columns = GridCells.Fixed(uiState.gridCellsCount),
                                     contentPadding = PaddingValues(
                                         start = 16.dp,
                                         end = 16.dp,
@@ -276,7 +275,7 @@ fun FoldersScreen(
                             }
 
                             AnimatedVisibility(
-                                visible = !uiState.isGridView,
+                                visible = uiState.gridCellsCount == 1,
                                 enter = fadeIn(),
                                 exit = fadeOut()
                             ) {
@@ -338,12 +337,12 @@ fun FoldersScreen(
                     }
                     else -> {
                         AnimatedVisibility(
-                            visible = uiState.isGridView,
+                            visible = uiState.gridCellsCount > 1,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                                columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
@@ -369,7 +368,7 @@ fun FoldersScreen(
                         }
 
                         AnimatedVisibility(
-                            visible = !uiState.isGridView,
+                            visible = uiState.gridCellsCount == 1,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
@@ -498,6 +497,21 @@ fun FoldersScreen(
             },
             onAutoPaste = {}
         )
+    }
+
+    if (showViewSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showViewSettings = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            FoldersViewSettingsMenu(
+                gridCellsCount = uiState.gridCellsCount,
+                sortOrder = uiState.sortOrder,
+                onGridCellsCountChange = { viewModel.setGridCellsCount(it) },
+                onSortOrderChange = { viewModel.setSortOrder(it) }
+            )
+        }
     }
 }
 
@@ -719,5 +733,135 @@ fun EmptyFoldersState(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun FoldersViewSettingsMenu(
+    gridCellsCount: Int,
+    sortOrder: String,
+    onGridCellsCountChange: (Int) -> Unit,
+    onSortOrderChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp, start = 24.dp, end = 24.dp, top = 8.dp)
+    ) {
+        Text(
+            text = "View Settings",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        // ── Grid Layout Option ──
+        Text(
+            text = "Layout",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Slider(
+                value = gridCellsCount.toFloat(),
+                onValueChange = { onGridCellsCountChange(it.toInt()) },
+                valueRange = 1f..6f,
+                steps = 4,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            // Tick labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("List", "2", "3", "4", "5", "6").forEach { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // ── Sort Order ──
+        Text(
+            text = "Sort Folders (A-Z)",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FoldersSortChip(
+                label = "A - Z",
+                selected = sortOrder == "ASC",
+                onClick = { onSortOrderChange("ASC") },
+                modifier = Modifier.weight(1f)
+            )
+            FoldersSortChip(
+                label = "Z - A",
+                selected = sortOrder == "DESC",
+                onClick = { onSortOrderChange("DESC") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FoldersSortChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        tonalElevation = if (selected) 0.dp else 1.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp).padding(end = 0.dp),
+                    tint = contentColor
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                color = contentColor
+            )
+        }
     }
 }

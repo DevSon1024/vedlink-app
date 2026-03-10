@@ -21,12 +21,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devson.vedlink.ui.presentation.components.CompactLinkCard
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Scale
+import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import kotlinx.coroutines.flow.collectLatest
 import java.util.Calendar
@@ -47,28 +57,17 @@ fun HomeScreen(
     val greeting = remember {
         val calendar = Calendar.getInstance()
         when (calendar.get(Calendar.HOUR_OF_DAY)) {
-            in 0..11 -> "Good Morning"
+            in 0..11  -> "Good Morning"
             in 12..16 -> "Good Afternoon"
-            else -> "Good Evening"
+            else      -> "Good Evening"
         }
     }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
-                is HomeUiEvent.ShowError -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = SnackbarDuration.Short
-                    )
-                }
-
-                is HomeUiEvent.ShowSuccess -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = SnackbarDuration.Short
-                    )
-                }
+                is HomeUiEvent.ShowError   -> snackbarHostState.showSnackbar(event.message, duration = SnackbarDuration.Short)
+                is HomeUiEvent.ShowSuccess -> snackbarHostState.showSnackbar(event.message, duration = SnackbarDuration.Short)
             }
         }
     }
@@ -85,11 +84,12 @@ fun HomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 120.dp)
             ) {
+                // ── Greeting ──────────────────────────────────────────────────
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
                         Text(
                             text = "$greeting 👋",
                             style = MaterialTheme.typography.headlineLarge,
@@ -105,9 +105,11 @@ fun HomeScreen(
                     }
                 }
 
+                // ── Stats ─────────────────────────────────────────────────────
                 AnimatedVisibility(
-                    visible = !uiState.isLoading,
-                    enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.9f)
+                    visible = !uiState.isLoading && uiState.showStats,
+                    enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.9f),
+                    exit = fadeOut(tween(400)) + scaleOut(tween(400))
                 ) {
                     Row(
                         modifier = Modifier
@@ -134,11 +136,13 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                if (uiState.showStats) Spacer(modifier = Modifier.height(24.dp))
 
+                // ── Quick Actions ─────────────────────────────────────────────
                 AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(tween(700)) + slideInHorizontally(tween(700)) { it / 2 }
+                    visible = uiState.showQuickActions,
+                    enter = fadeIn(tween(700)) + slideInHorizontally(tween(700)) { it / 2 },
+                    exit  = fadeOut(tween(400)) + slideOutHorizontally(tween(400)) { it / 2 }
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                         Text(
@@ -174,11 +178,13 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                if (uiState.showQuickActions) Spacer(modifier = Modifier.height(32.dp))
 
+                // ── Jump Back In ──────────────────────────────────────────────
                 AnimatedVisibility(
-                    visible = uiState.recentLinks.isNotEmpty(),
-                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 }
+                    visible = uiState.showRecentLinks && uiState.recentLinks.isNotEmpty(),
+                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 },
+                    exit  = fadeOut(tween(400)) + slideOutVertically(tween(400)) { it / 2 }
                 ) {
                     Column {
                         Row(
@@ -188,12 +194,23 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Recently Saved",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "Jump Back In",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
                             Text(
                                 text = "See All",
                                 style = MaterialTheme.typography.labelLarge,
@@ -207,35 +224,33 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+                        val cardWidth = screenWidth * 0.72f
+
                         val listState = rememberLazyListState()
                         LazyRow(
                             state = listState,
                             flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
                             contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             items(uiState.recentLinks, key = { it.id }) { link ->
-                                Box(modifier = Modifier.width(300.dp)) {
-                                    CompactLinkCard(
-                                        link = link,
-                                        onClick = { onNavigateToDetails(link.id) },
-                                        onLongPress = { },
-                                        isSelected = false,
-                                        isSelectionMode = false,
-                                        onFavoriteClick = { } // Keep it simple on home
-                                    )
-                                }
+                                JumpBackInCard(
+                                    link = link,
+                                    cardWidth = cardWidth.value,
+                                    onClick = { onNavigateToDetails(link.id) }
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // Animated FAB
+            // ── Animated FAB ──────────────────────────────────────────────────
             AnimatedVisibility(
                 visible = !showAddDialog,
                 enter = scaleIn(animationSpec = tween(durationMillis = 300)),
-                exit = scaleOut(animationSpec = tween(durationMillis = 300)),
+                exit  = scaleOut(animationSpec = tween(durationMillis = 300)),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 100.dp)
@@ -274,6 +289,144 @@ fun HomeScreen(
     }
 }
 
+// ── Jump Back In Card ─────────────────────────────────────────────────────────
+
+@Composable
+private fun JumpBackInCard(
+    link: Link,
+    cardWidth: Float,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(cardWidth.dp)
+            .height(210.dp),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Full-bleed background image
+            if (!link.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(link.imageUrl)
+                        .size(600, 420)
+                        .scale(Scale.FILL)
+                        .crossfade(true)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = link.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Placeholder
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        modifier = Modifier.size(52.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
+            }
+
+            // Gradient overlay — bottom 60%
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.65f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+
+            // Favourite badge (top-start)
+            if (link.isFavorite) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFF4081).copy(alpha = 0.92f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Favourite",
+                        modifier = Modifier.padding(4.dp).size(12.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // Text at bottom
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = link.title ?: "Untitled",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        modifier = Modifier.size(11.dp),
+                        tint = Color.White.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = link.domain ?: "Unknown",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = Color.White.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Supporting composables ────────────────────────────────────────────────────
+
 @Composable
 fun StatCard(
     modifier: Modifier = Modifier,
@@ -300,11 +453,7 @@ fun StatCard(
                     .background(contentColor.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor
-                )
+                Icon(imageVector = icon, contentDescription = null, tint = contentColor)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(

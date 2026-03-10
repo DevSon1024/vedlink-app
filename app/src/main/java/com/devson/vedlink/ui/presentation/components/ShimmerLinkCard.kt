@@ -22,85 +22,57 @@ import androidx.compose.ui.unit.dp
 fun ShimmerLinkCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .height(160.dp)
+                .shimmerEffect()
         ) {
-            // Shimmer Image Box
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .shimmerEffect()
-            )
-
-            // Content Section
+            // Ghost text lines at bottom
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
-                // Title
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .height(18.dp)
+                        .fillMaxWidth(0.8f)
+                        .height(14.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .shimmerEffect()
+                        .background(Color.White.copy(alpha = 0.15f))
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(18.dp)
+                        .fillMaxWidth(0.45f)
+                        .height(10.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .shimmerEffect()
+                        .background(Color.White.copy(alpha = 0.10f))
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Domain Date
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .shimmerEffect()
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.3f)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .shimmerEffect()
-                    )
-                }
             }
-
-            // Options Button Placeholder
+        }
+        // Ghost action row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
             Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(4.dp))
                     .shimmerEffect()
             )
         }
@@ -110,77 +82,50 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
 @Composable
 fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().aspectRatio(0.85f),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .shimmerEffect()
         ) {
-            // Preview Image Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.4f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .shimmerEffect()
-            )
-
-            // Content Section
+            // Ghost text lines at bottom
             Column(
                 modifier = Modifier
+                    .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(10.dp)
+                    .padding(end = 36.dp)
+                    .padding(start = 8.dp, bottom = 8.dp, top = 8.dp)
             ) {
-                // Title
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth(0.8f)
                         .height(14.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .shimmerEffect()
+                        .background(Color.White.copy(alpha = 0.15f))
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(14.dp)
+                        .fillMaxWidth(0.45f)
+                        .height(10.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .shimmerEffect()
+                        .background(Color.White.copy(alpha = 0.10f))
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Domain Row with Menu
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .shimmerEffect()
-                    )
-
-                    // Options Button Placeholder
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .shimmerEffect()
-                    )
-                }
             }
+            
+            // Ghost action row (3-dot menu placeholder)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .shimmerEffect()
+            )
         }
     }
 }

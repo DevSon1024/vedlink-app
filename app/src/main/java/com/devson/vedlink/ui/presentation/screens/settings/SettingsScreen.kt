@@ -32,7 +32,8 @@ import androidx.compose.material.icons.filled.Palette
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateToAbout: () -> Unit = {},
-    onNavigateToLookAndFeel: () -> Unit = {}
+    onNavigateToLookAndFeel: () -> Unit = {},
+    onNavigateToCustomizeHome: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -126,8 +127,15 @@ fun SettingsScreen(
                 }
             }
 
-            // Appearance Section
-            SettingsSection(title = "Appearance")
+            // Customize UI Section
+            SettingsSection(title = "Customize UI")
+
+            SettingsItem(
+                icon = Icons.Default.Home,
+                title = "Customize Home",
+                subtitle = "Toggle home page sections",
+                onClick = onNavigateToCustomizeHome
+            )
 
             SettingsItem(
                 icon = Icons.Default.Palette,

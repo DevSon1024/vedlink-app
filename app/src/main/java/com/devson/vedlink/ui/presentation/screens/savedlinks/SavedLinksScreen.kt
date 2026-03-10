@@ -41,7 +41,7 @@ import com.devson.vedlink.ui.presentation.helper.*
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SavedLinksScreen(
-    onNavigateToDetails: (Int) -> Unit,
+    onNavigateToDetails: (linkId: Int, linkIds: List<Int>) -> Unit,
     viewModel: SavedLinksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -199,6 +199,10 @@ fun SavedLinksScreen(
                     }
 
                     when {
+                        !uiState.isPrefsLoaded -> {
+                            // Empty box while reading DataStore to avoid flashing the wrong list type
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
                         uiState.isLoading -> {
                             // Shimmer skeleton based on current grid count
                             LazyVerticalGrid(
@@ -211,7 +215,12 @@ fun SavedLinksScreen(
                                 verticalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 12.dp else 10.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(6) {
+                                val shimmerCount = when (uiState.gridCellsCount) {
+                                    1 -> 6
+                                    2 -> 10
+                                    else -> 24
+                                }
+                                items(shimmerCount) {
                                     when {
                                         uiState.gridCellsCount == 1 -> ShimmerLinkCard()
                                         uiState.gridCellsCount == 2 -> CompactShimmerLinkCard()
@@ -251,7 +260,7 @@ fun SavedLinksScreen(
                                                 link = link,
                                                 onClick = {
                                                     if (isSelectionMode) handleSelectionClick(link.id)
-                                                    else onNavigateToDetails(link.id)
+                                                    else onNavigateToDetails(link.id, uiState.links.map { it.id })
                                                 },
                                                 onLongPress = { handleLongPress(link.id) },
                                                 isSelected = selectedLinks.contains(link.id),
@@ -279,7 +288,7 @@ fun SavedLinksScreen(
                                                 link = link,
                                                 onClick = {
                                                     if (isSelectionMode) handleSelectionClick(link.id)
-                                                    else onNavigateToDetails(link.id)
+                                                    else onNavigateToDetails(link.id, uiState.links.map { it.id })
                                                 },
                                                 onLongPress = { handleLongPress(link.id) },
                                                 isSelected = selectedLinks.contains(link.id),
@@ -306,7 +315,7 @@ fun SavedLinksScreen(
                                                 link = link,
                                                 onClick = {
                                                     if (isSelectionMode) handleSelectionClick(link.id)
-                                                    else onNavigateToDetails(link.id)
+                                                    else onNavigateToDetails(link.id, uiState.links.map { it.id })
                                                 },
                                                 onLongPress = { handleLongPress(link.id) },
                                                 isSelected = selectedLinks.contains(link.id),
