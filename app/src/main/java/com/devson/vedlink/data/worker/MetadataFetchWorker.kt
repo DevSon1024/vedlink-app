@@ -11,9 +11,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URI
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
+import org.jsoup.Jsoup
 
 @HiltWorker
 class MetadataFetchWorker @AssistedInject constructor(
@@ -133,17 +136,18 @@ class MetadataFetchWorker @AssistedInject constructor(
                 val response = okHttpClient.newCall(request).execute()
                 val html = response.body?.string() ?: return@withContext LinkMetadata()
 
-                // Extract OpenGraph tags
-                val title = extractMetaTag(html, "og:title")
-                    ?: extractMetaTag(html, "twitter:title")
-                    ?: extractTitleTag(html)
+                val document = Jsoup.parse(html)
+                
+                val title = document.select("meta[property=og:title]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.select("meta[name=twitter:title]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.title().takeIf { it.isNotBlank() }
 
-                val description = extractMetaTag(html, "og:description")
-                    ?: extractMetaTag(html, "twitter:description")
-                    ?: extractMetaTag(html, "description")
+                val description = document.select("meta[property=og:description]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.select("meta[name=twitter:description]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.select("meta[name=description]").attr("content").takeIf { it.isNotBlank() }
 
-                val imageUrl = extractMetaTag(html, "og:image")
-                    ?: extractMetaTag(html, "twitter:image")
+                val imageUrl = document.select("meta[property=og:image]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.select("meta[name=twitter:image]").attr("content").takeIf { it.isNotBlank() }
 
                 // Clean YouTube title
                 val cleanTitle = title?.let {
@@ -230,41 +234,36 @@ class MetadataFetchWorker @AssistedInject constructor(
 
     private fun parseRedditPostJson(jsonData: String): LinkMetadata {
         return try {
-            val jsonArray = JSONArray(jsonData)
-            val postData = jsonArray.getJSONObject(0)
-                .getJSONObject("data")
-                .getJSONArray("children")
-                .getJSONObject(0)
-                .getJSONObject("data")
-
-            val title = postData.optString("title")
-
-            val description = postData.optString("selftext").takeIf { it.isNotBlank() }
-                ?: postData.optString("subreddit_name_prefixed")
-
-            // Image extraction
+            val gson = Gson()
+            val listType = object : TypeToken<List<RedditResponse>>() {}.type
+            val responses: List<RedditResponse> = gson.fromJson(jsonData, listType)
+            
+            val postData = responses.firstOrNull()?.data?.children?.firstOrNull()?.data
+                ?: return LinkMetadata()
+                
+            val title = postData.title
+            val description = postData.selftext?.takeIf { it.isNotBlank() }
+                ?: postData.subredditNamePrefixed
+                
             var imageUrl = ""
-            val urlOverridden = postData.optString("url_overridden_by_dest")
-
-            if (urlOverridden.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp)$"))) {
+            val urlOverridden = postData.urlOverriddenByDest ?: ""
+            
+            if (urlOverridden.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp)(?:\\?.*)?$"))) {
                 imageUrl = urlOverridden
             } else {
-                val preview = postData.optJSONObject("preview")
-                val images = preview?.optJSONArray("images")
-                if (images != null && images.length() > 0) {
-                    val source = images.getJSONObject(0).optJSONObject("source")
-                    imageUrl = source?.optString("url") ?: ""
-                    imageUrl = imageUrl.replace("&amp;", "&")
+                val sourceUrl = postData.preview?.images?.firstOrNull()?.source?.url
+                if (!sourceUrl.isNullOrBlank()) {
+                    imageUrl = sourceUrl.replace("&amp;", "&")
                 }
             }
-
+            
             if (imageUrl.isBlank()) {
-                val thumb = postData.optString("thumbnail")
+                val thumb = postData.thumbnail ?: ""
                 if (thumb.startsWith("http")) {
                     imageUrl = thumb
                 }
             }
-
+            
             LinkMetadata(title, description, imageUrl)
         } catch (e: Exception) {
             LinkMetadata()
@@ -334,3 +333,19 @@ data class LinkMetadata(
     val description: String? = null,
     val imageUrl: String? = null
 )
+
+// Reddit JSON Data Classes for Gson
+data class RedditResponse(val data: RedditData?)
+data class RedditData(val children: List<RedditChild>?)
+data class RedditChild(val data: RedditPost?)
+data class RedditPost(
+    val title: String?,
+    val selftext: String?,
+    @SerializedName("subreddit_name_prefixed") val subredditNamePrefixed: String?,
+    @SerializedName("url_overridden_by_dest") val urlOverriddenByDest: String?,
+    val thumbnail: String?,
+    val preview: RedditPreview?
+)
+data class RedditPreview(val images: List<RedditImage>?)
+data class RedditImage(val source: RedditSource?)
+data class RedditSource(val url: String?)
