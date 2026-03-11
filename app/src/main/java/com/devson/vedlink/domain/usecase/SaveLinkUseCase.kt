@@ -13,7 +13,13 @@ class SaveLinkUseCase @Inject constructor(
     private val repository: LinkRepository,
     private val workManagerHelper: WorkManagerHelper
 ) {
-    suspend operator fun invoke(url: String, checkDuplicate: Boolean = false): Result<SaveResult> {
+    suspend operator fun invoke(
+        url: String, 
+        checkDuplicate: Boolean = false,
+        title: String? = null,
+        description: String? = null,
+        imageUrl: String? = null
+    ): Result<SaveResult> {
         return try {
             val cleanUrl = cleanUrl(url)
 
@@ -34,9 +40,9 @@ class SaveLinkUseCase @Inject constructor(
             val domain = extractDomain(cleanUrl)
             val link = Link(
                 url = cleanUrl,
-                title = domain,
-                description = null,
-                imageUrl = null,
+                title = title ?: domain,
+                description = description,
+                imageUrl = imageUrl,
                 domain = domain
             )
 

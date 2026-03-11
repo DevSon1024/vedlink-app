@@ -6,6 +6,7 @@ import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.*
+import com.devson.vedlink.domain.util.MinimalMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -125,9 +126,14 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
-    fun saveLink(url: String) {
+    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
         viewModelScope.launch {
-            saveLinkUseCase(url)
+            saveLinkUseCase(
+                url = url,
+                title = metadata?.title,
+                description = metadata?.description,
+                imageUrl = metadata?.imageUrl
+            )
                 .onSuccess {
                     _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Link saved successfully"))
                 }

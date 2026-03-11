@@ -491,8 +491,8 @@ fun FoldersScreen(
         EnhancedAddLinkBottomSheet(
             recentLinks = uiState.linksByDomain.values.flatten().sortedByDescending { it.createdAt }.take(10),
             onDismiss = { showAddDialog = false },
-            onConfirm = { url ->
-                viewModel.saveLink(url)
+            onConfirm = { url, metadata ->
+                viewModel.saveLink(url, metadata)
                 showAddDialog = false
             },
             onAutoPaste = {}

@@ -278,8 +278,8 @@ fun HomeScreen(
                 EnhancedAddLinkBottomSheet(
                     recentLinks = uiState.recentLinks,
                     onDismiss = { showAddDialog = false },
-                    onConfirm = { url ->
-                        viewModel.saveLink(url)
+                    onConfirm = { url, metadata ->
+                        viewModel.saveLink(url, metadata)
                         showAddDialog = false
                     },
                     onAutoPaste = {}

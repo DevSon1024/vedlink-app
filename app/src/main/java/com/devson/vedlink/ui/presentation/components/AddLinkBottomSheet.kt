@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -28,17 +29,34 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.util.MinimalMetadata
 import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import com.devson.vedlink.domain.util.MetadataScraperUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnhancedAddLinkBottomSheet(
     recentLinks: List<Link>,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-    onAutoPaste: () -> Unit
+    onConfirm: (String, MinimalMetadata?) -> Unit,
+    onAutoPaste: () -> Unit,
+    urlInputValue: String = "",
+    onUrlChange: (String) -> Unit = {}
 ) {
-    var url by remember { mutableStateOf("") }
+    var localUrl by remember { mutableStateOf(urlInputValue) }
+    val updateUrl: (String) -> Unit = { 
+        localUrl = it
+        onUrlChange(it)
+    }
     val context = LocalContext.current
     var isValidUrl by remember { mutableStateOf(true) }
     var showRecentLinks by remember { mutableStateOf(true) }
@@ -46,6 +64,25 @@ fun EnhancedAddLinkBottomSheet(
     // 1. Setup state and scope for animation
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    
+    // Internal Preview State
+    var previewMetadata by remember { mutableStateOf<MinimalMetadata?>(null) }
+    var isPreviewLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(localUrl) {
+        if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
+            delay(500) // Debounce
+            isPreviewLoading = true
+            previewMetadata = null
+            previewMetadata = withContext(Dispatchers.IO) {
+                MetadataScraperUtil.fetchFallbackMetadata(localUrl)
+            }
+            isPreviewLoading = false
+        } else {
+            previewMetadata = null
+            isPreviewLoading = false
+        }
+    }
 
     // Animation state for FAB (Plus -> Cross)
     var isLaunched by remember { mutableStateOf(false) }
@@ -103,7 +140,7 @@ fun EnhancedAddLinkBottomSheet(
                                 val clipData = clipboard.primaryClip
                                 if (clipData != null && clipData.itemCount > 0) {
                                     val pastedText = clipData.getItemAt(0).text.toString()
-                                    url = pastedText
+                                    updateUrl(pastedText)
                                     onAutoPaste()
                                 }
                             },
@@ -124,9 +161,9 @@ fun EnhancedAddLinkBottomSheet(
 
                     // Input Field
                     OutlinedTextField(
-                        value = url,
+                        value = localUrl,
                         onValueChange = {
-                            url = it
+                            updateUrl(it)
                             isValidUrl = true
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -141,8 +178,8 @@ fun EnhancedAddLinkBottomSheet(
                         },
                         trailingIcon = {
                             Row {
-                                AnimatedVisibility(visible = url.isNotEmpty()) {
-                                    IconButton(onClick = { url = "" }) {
+                                AnimatedVisibility(visible = localUrl.isNotEmpty()) {
+                                    IconButton(onClick = { updateUrl("") }) {
                                         Icon(
                                             imageVector = Icons.Default.Clear,
                                             contentDescription = "Clear",
@@ -168,8 +205,8 @@ fun EnhancedAddLinkBottomSheet(
                         ),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                if (url.isNotBlank() && isValidUrl(url)) {
-                                    onConfirm(url)
+                                if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
+                                    onConfirm(localUrl, previewMetadata)
                                 } else {
                                     isValidUrl = false
                                 }
@@ -184,13 +221,33 @@ fun EnhancedAddLinkBottomSheet(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Preview Area (Skeleton or Card)
+                    AnimatedVisibility(
+                        visible = isPreviewLoading,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        LinkPreviewSkeleton(modifier = Modifier.padding(bottom = 16.dp))
+                    }
+
+                    val currentMetadata = previewMetadata
+                    AnimatedVisibility(
+                        visible = !isPreviewLoading && currentMetadata != null && (!currentMetadata.title.isNullOrBlank() || !currentMetadata.imageUrl.isNullOrBlank()),
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        currentMetadata?.let {
+                            LinkPreviewCard(metadata = it, modifier = Modifier.padding(bottom = 16.dp))
+                        }
+                    }
 
                     // Add Button
                     Button(
                         onClick = {
-                            if (url.isNotBlank() && isValidUrl(url)) {
-                                onConfirm(url)
+                            if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
+                                onConfirm(localUrl, previewMetadata)
                             } else {
                                 isValidUrl = false
                             }
@@ -198,7 +255,7 @@ fun EnhancedAddLinkBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        enabled = url.isNotBlank(),
+                        enabled = localUrl.isNotBlank(),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -258,6 +315,7 @@ fun EnhancedAddLinkBottomSheet(
             FloatingActionButton(
                 onClick = {
                     // 3. Trigger close animation, then dismiss
+                    previewMetadata = null
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) {
                             onDismiss()
@@ -379,5 +437,137 @@ private fun isValidUrl(url: String): Boolean {
         pattern.matcher(url).matches() || url.startsWith("http://") || url.startsWith("https://")
     } catch (e: Exception) {
         false
+    }
+}
+
+@Composable
+fun LinkPreviewCard(
+    metadata: MinimalMetadata,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            if (!metadata.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = metadata.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .width(80.dp)
+                        .fillMaxHeight(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = metadata.title ?: "No Title",
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = metadata.description ?: "No description available",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LinkPreviewSkeleton(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerTranslate by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_translate"
+    )
+
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        start = Offset(shimmerTranslate - 200f, shimmerTranslate - 200f),
+        end = Offset(shimmerTranslate, shimmerTranslate)
+    )
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .fillMaxHeight()
+                    .background(shimmerBrush)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+            }
+        }
     }
 }

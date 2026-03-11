@@ -8,7 +8,10 @@ import com.devson.vedlink.domain.usecase.GetAllLinksUseCase
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
+import com.devson.vedlink.domain.util.MinimalMetadata
+import com.devson.vedlink.domain.util.MetadataScraperUtil
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -19,7 +22,9 @@ data class HomeUiState(
     // Section visibility — driven by ThemePreferences
     val showStats: Boolean = true,
     val showQuickActions: Boolean = true,
-    val showRecentLinks: Boolean = true
+    val showRecentLinks: Boolean = true,
+    val previewMetadata: MinimalMetadata? = null,
+    val isPreviewLoading: Boolean = false
 )
 
 sealed class HomeUiEvent {
@@ -27,6 +32,7 @@ sealed class HomeUiEvent {
     data class ShowSuccess(val message: String) : HomeUiEvent()
 }
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,
@@ -40,9 +46,39 @@ class HomeViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<HomeUiEvent>()
     val uiEvent: SharedFlow<HomeUiEvent> = _uiEvent.asSharedFlow()
 
+    private val urlInputFlow = MutableStateFlow("")
+
     init {
         loadHomeData()
         loadSectionPreferences()
+        
+        viewModelScope.launch {
+            urlInputFlow
+                .debounce(500)
+                .distinctUntilChanged()
+                .collect { url ->
+                    if (isValidUrl(url)) {
+                        _uiState.update { it.copy(isPreviewLoading = true) }
+                        val metadata = MetadataScraperUtil.fetchFallbackMetadata(url)
+                        _uiState.update { it.copy(previewMetadata = metadata, isPreviewLoading = false) }
+                    } else {
+                        _uiState.update { it.copy(previewMetadata = null, isPreviewLoading = false) }
+                    }
+                }
+        }
+    }
+
+    private fun isValidUrl(url: String): Boolean {
+        return url.startsWith("http://") || url.startsWith("https://")
+    }
+
+    fun onAddLinkUrlChanged(url: String) {
+        urlInputFlow.value = url
+    }
+
+    fun clearPreviewState() {
+        urlInputFlow.value = ""
+        _uiState.update { it.copy(previewMetadata = null, isPreviewLoading = false) }
     }
 
     private fun loadHomeData() {
@@ -86,9 +122,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveLink(url: String) {
+    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
         viewModelScope.launch {
-            saveLinkUseCase(url)
+            saveLinkUseCase(
+                url = url, 
+                title = metadata?.title, 
+                description = metadata?.description, 
+                imageUrl = metadata?.imageUrl
+            )
                 .onSuccess {
                     _uiEvent.emit(HomeUiEvent.ShowSuccess("Link saved successfully"))
                 }

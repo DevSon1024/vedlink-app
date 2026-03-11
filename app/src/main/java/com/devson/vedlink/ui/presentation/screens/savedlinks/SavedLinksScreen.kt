@@ -381,8 +381,8 @@ fun SavedLinksScreen(
         EnhancedAddLinkBottomSheet(
             recentLinks = uiState.links.take(10),
             onDismiss = { showAddDialog = false },
-            onConfirm = { url ->
-                viewModel.saveLink(url)
+            onConfirm = { url, metadata ->
+                viewModel.saveLink(url, metadata)
                 showAddDialog = false
             },
             onAutoPaste = {}

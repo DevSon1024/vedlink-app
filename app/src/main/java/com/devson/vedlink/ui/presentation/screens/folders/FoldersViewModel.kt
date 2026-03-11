@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.devson.vedlink.data.preferences.ThemePreferences
+import com.devson.vedlink.domain.util.MinimalMetadata
 import javax.inject.Inject
 
 data class FolderItem(
@@ -264,9 +265,14 @@ class FoldersViewModel @Inject constructor(
         loadFolders()
     }
 
-    fun saveLink(url: String) {
+    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
         viewModelScope.launch {
-            saveLinkUseCase(url)
+            saveLinkUseCase(
+                url = url,
+                title = metadata?.title,
+                description = metadata?.description,
+                imageUrl = metadata?.imageUrl
+            )
                 .onSuccess {
                     _uiEvent.emit(FoldersUiEvent.ShowSuccess("Link saved successfully"))
                 }
