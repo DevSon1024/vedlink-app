@@ -233,7 +233,7 @@ fun SavedLinksScreen(
                             EmptyState(modifier = Modifier.fillMaxSize())
                         }
                         else -> {
-                            // ── UNIFIED GRID ──────────────────────────────────────
+                            //  UNIFIED GRID 
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
@@ -366,7 +366,7 @@ fun SavedLinksScreen(
         )
     }
 
-    // ── Bottom Sheets ────────────────────────────────────────────────────────
+    //  Bottom Sheets 
     if (showViewSettings) {
         ViewSettingsBottomSheet(
             gridCellsCount = uiState.gridCellsCount,
@@ -402,7 +402,7 @@ fun SavedLinksScreen(
     }
 }
 
-// ── View Settings Bottom Sheet ───────────────────────────────────────────────
+//  View Settings Bottom Sheet 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -451,7 +451,7 @@ fun ViewSettingsBottomSheet(
                 modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
             )
 
-            // ── Grid Size Slider ──────────────────────────────────────────────
+            //  Grid Size Slider 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -515,7 +515,7 @@ fun ViewSettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ── Sort Order ────────────────────────────────────────────────────
+            //  Sort Order 
             Text(
                 text = "Sort Order",
                 style = MaterialTheme.typography.titleSmall,
@@ -597,7 +597,7 @@ private fun SortChip(
     }
 }
 
-// ── Supporting composables (kept from original) ─────────────────────────────
+//  Supporting composables (kept from original) 
 
 @Composable
 fun ItemCountSection(

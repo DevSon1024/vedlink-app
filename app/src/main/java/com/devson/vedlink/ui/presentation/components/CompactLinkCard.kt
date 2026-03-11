@@ -77,7 +77,7 @@ fun CompactLinkCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // ── Background: image or placeholder ──
+            //  Background: image or placeholder 
             if (!link.imageUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -117,7 +117,7 @@ fun CompactLinkCard(
                 }
             }
 
-            // ── Bottom gradient overlay ──
+            //  Bottom gradient overlay 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -130,7 +130,7 @@ fun CompactLinkCard(
                     )
             )
 
-            // ── Top-Left: Favourite badge ──
+            //  Top-Left: Favourite badge 
             if (!isSelectionMode && link.isFavorite) {
                 Surface(
                     modifier = Modifier
@@ -148,7 +148,7 @@ fun CompactLinkCard(
                 }
             }
 
-            // ── Top-Right: Selection checkbox ──
+            //  Top-Right: Selection checkbox 
             if (isSelectionMode) {
                 Surface(
                     modifier = Modifier
@@ -170,7 +170,7 @@ fun CompactLinkCard(
                 }
             }
 
-            // ── Selection dim overlay ──
+            //  Selection dim overlay 
             if (isSelected) {
                 Box(
                     modifier = Modifier
@@ -179,7 +179,7 @@ fun CompactLinkCard(
                 )
             }
 
-            // ── Bottom Left: Title & Domain text ──
+            //  Bottom Left: Title & Domain text 
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -218,7 +218,7 @@ fun CompactLinkCard(
                 }
             }
 
-            // ── Bottom Right: Action Menu ──
+            //  Bottom Right: Action Menu 
             if (!isSelectionMode) {
                 Box(
                     modifier = Modifier.align(Alignment.BottomEnd)

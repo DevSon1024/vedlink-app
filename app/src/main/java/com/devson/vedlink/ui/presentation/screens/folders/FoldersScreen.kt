@@ -756,7 +756,7 @@ fun FoldersViewSettingsMenu(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // ── Grid Layout Option ──
+        //  Grid Layout Option 
         Text(
             text = "Layout",
             style = MaterialTheme.typography.titleSmall,
@@ -796,7 +796,7 @@ fun FoldersViewSettingsMenu(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Sort Order ──
+        //  Sort Order 
         Text(
             text = "Sort Folders (A-Z)",
             style = MaterialTheme.typography.titleSmall,

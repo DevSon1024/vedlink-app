@@ -241,7 +241,8 @@ class SavedLinksViewModel @Inject constructor(
     fun refreshMetadata() {
         viewModelScope.launch {
             _uiState.value.links.forEach { link ->
-                workManagerHelper.enqueueLinkMetadataFetch(link.id)
+                // User explicitly requested refresh → bypass cache
+                workManagerHelper.enqueueLinkMetadataFetch(link.id, isForcedRefresh = true)
             }
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing metadata..."))
         }
@@ -249,7 +250,8 @@ class SavedLinksViewModel @Inject constructor(
 
     fun refreshLink(linkId: Int) {
         viewModelScope.launch {
-            workManagerHelper.enqueueLinkMetadataFetch(linkId)
+            // User explicitly requested refresh → bypass cache
+            workManagerHelper.enqueueLinkMetadataFetch(linkId, isForcedRefresh = true)
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing link..."))
         }
     }

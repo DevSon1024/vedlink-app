@@ -1,9 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 val splitApks = !project.hasProperty("noSplits") && !gradle.startParameter.taskNames.any {
@@ -32,6 +41,17 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -56,8 +76,17 @@ android {
                 isEnable = true
                 reset()
                 include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-                isUniversalApk = false
+                isUniversalApk = true
             }
+        }
+    }
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abiName = outputImpl.filters.find { it.filterType == "ABI" }?.identifier ?: "Universal"
+            val buildType = variant.buildType.name.replaceFirstChar { it.uppercase() }
+            outputFileName = "VedLink_v${variant.versionName}_${buildType}_${abiName}.apk"
         }
     }
 

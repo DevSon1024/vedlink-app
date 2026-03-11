@@ -7,7 +7,7 @@ import com.devson.vedlink.data.local.entity.LinkEntity
 
 @Database(
     entities = [LinkEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class VedLinkDatabase : RoomDatabase() {

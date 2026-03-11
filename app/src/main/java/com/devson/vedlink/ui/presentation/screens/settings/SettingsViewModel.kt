@@ -246,22 +246,25 @@ class SettingsViewModel @Inject constructor(
                     var duplicateCount = 0
 
                     backupData.links.forEach { item ->
-                        // Check if link already exists
-                        val existingLink = repository.getLinkByUrl(item.url)
+                        // Normalise the URL from the backup before checking for duplicates.
+                        // This prevents the same link being re-inserted just because it has a
+                        // trailing slash, different casing in the scheme/host, or extra whitespace.
+                        val normalisedUrl = normaliseUrl(item.url)
+
+                        val existingLink = repository.getLinkByUrl(normalisedUrl)
+                            ?: repository.getLinkByUrl(item.url) // fallback: try the raw URL too
 
                         if (existingLink == null) {
-                            // Extract domain from URL
-                            val domain = extractDomain(item.url)
+                            val domain = extractDomain(normalisedUrl)
 
-                            // Create new link with timestamp from backup
                             val newLink = Link(
-                                url = item.url,
+                                url = normalisedUrl,
                                 isFavorite = item.isFavorite,
-                                title = domain, // Temporary until metadata fetched
+                                title = domain,
                                 description = null,
                                 imageUrl = null,
                                 domain = domain,
-                                createdAt = item.savedAt // Restore original timestamp
+                                createdAt = item.savedAt
                             )
 
                             repository.insertLink(newLink)
@@ -294,6 +297,30 @@ class SettingsViewModel @Inject constructor(
                     _toastMessage.emit("Import failed: ${e.message}")
                 }
             }
+        }
+    }
+
+    /**
+     * Normalise a URL so that trivially-different variants of the same link
+     * (trailing slash, mixed-case scheme/host, extra whitespace) are treated as equal.
+     */
+    private fun normaliseUrl(url: String): String {
+        return try {
+            val trimmed = url.trim()
+            val uri = java.net.URI(trimmed)
+            // Lowercase only the scheme and host; keep path/query/fragment as-is
+            val normUri = java.net.URI(
+                uri.scheme?.lowercase(),
+                uri.userInfo,
+                uri.host?.lowercase(),
+                uri.port,
+                uri.path?.trimEnd('/')?.ifEmpty { "/" },
+                uri.query,
+                uri.fragment
+            )
+            normUri.toString()
+        } catch (e: Exception) {
+            url.trim().trimEnd('/')
         }
     }
 

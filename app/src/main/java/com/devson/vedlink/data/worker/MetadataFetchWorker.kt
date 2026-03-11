@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.io.IOException
 import java.net.URI
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -33,14 +34,34 @@ class MetadataFetchWorker @AssistedInject constructor(
 
             val link = linkDao.getLinkById(linkId) ?: return@withContext Result.failure()
 
-            // HYBRID STRATEGY:
-            // 1. YouTube: Try OpenGraph + Microlink
-            // 2. Reddit: Use Native JSON API
-            // 3. Others: Use Microlink API
+            // --- AGGRESSIVE LOCAL CACHE CHECK ---
+            // If we already have good metadata and this is not a forced refresh, skip all network calls.
+            val isForcedRefresh = inputData.getBoolean(KEY_IS_FORCED_REFRESH, false)
+            if (!isForcedRefresh &&
+                !link.title.isNullOrBlank() &&
+                !link.imageUrl.isNullOrBlank() &&
+                link.title != link.url
+            ) {
+                return@withContext Result.success()
+            }
+
+            // --- HYBRID SCRAPER STRATEGY ---
+            // 1. YouTube  → OpenGraph HTML scrape → Microlink fallback
+            // 2. Reddit   → Native JSON API
+            // 3. Others   → Generic Jsoup OpenGraph scrape → Microlink fallback (last resort)
             val metadata = when {
                 isYouTubeUrl(link.url) -> fetchYouTubeMetadata(link.url)
-                isRedditUrl(link.url) -> fetchRedditMetadata(link.url)
-                else -> fetchMicrolinkMetadata(link.url)
+                isRedditUrl(link.url)  -> fetchRedditMetadata(link.url)
+                else -> {
+                    // Phase 1: Try Jsoup generic scraper (free, no rate limits)
+                    val genericMetadata = fetchGenericOpenGraphMetadata(link.url)
+                    if (!genericMetadata.title.isNullOrBlank()) {
+                        genericMetadata
+                    } else {
+                        // Phase 2 (last resort): Microlink API — only when Jsoup fails
+                        fetchMicrolinkMetadata(link.url)
+                    }
+                }
             }
 
             // Calculate domain if missing
@@ -50,8 +71,7 @@ class MetadataFetchWorker @AssistedInject constructor(
                 link.domain
             }
 
-            // Update link with metadata
-            // Only overwrite if we actually found new data
+            // Update link with metadata — only overwrite if we actually found new data
             val updatedLink = link.copy(
                 title = if (!metadata.title.isNullOrBlank() && metadata.title != "- YouTube") {
                     metadata.title
@@ -90,6 +110,45 @@ class MetadataFetchWorker @AssistedInject constructor(
                 url.contains("redd.it", ignoreCase = true)
     }
 
+    // --- GENERIC JSOUP OPEN GRAPH SCRAPER ---
+    // Uses Jsoup directly (no external API calls, no rate limits).
+    // Prioritizes og: tags → Twitter card tags → standard HTML tags.
+    // Returns an empty LinkMetadata if the site blocks scraping (IOException).
+    private suspend fun fetchGenericOpenGraphMetadata(url: String): LinkMetadata {
+        return withContext(Dispatchers.IO) {
+            try {
+                val document = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .timeout(10_000)
+                    .get()
+
+                // Title: og:title → twitter:title → <title>
+                val title = document.select("meta[property=og:title]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.select("meta[name=twitter:title]").attr("content").takeIf { it.isNotBlank() }
+                    ?: document.title().takeIf { it.isNotBlank() }
+
+                // Description: og:description → twitter:description → meta[name=description]
+                val description =
+                    document.select("meta[property=og:description]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=twitter:description]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=description]").attr("content").takeIf { it.isNotBlank() }
+
+                // Image: og:image → twitter:image
+                val imageUrl =
+                    document.select("meta[property=og:image]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=twitter:image]").attr("content").takeIf { it.isNotBlank() }
+
+                LinkMetadata(title, description, imageUrl)
+            } catch (e: IOException) {
+                // Site blocked the scraper or network error — signal caller to use fallback
+                LinkMetadata()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                LinkMetadata()
+            }
+        }
+    }
+
     // --- YOUTUBE METADATA FETCHING ---
     private suspend fun fetchYouTubeMetadata(url: String): LinkMetadata {
         return withContext(Dispatchers.IO) {
@@ -124,30 +183,35 @@ class MetadataFetchWorker @AssistedInject constructor(
         }
     }
 
-    // Fetch OpenGraph metadata from HTML
+    // Fetch OpenGraph metadata from HTML via OkHttp + Jsoup (used for YouTube)
     private suspend fun fetchOpenGraphMetadata(url: String): LinkMetadata {
         return withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
                     .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    )
                     .build()
 
                 val response = okHttpClient.newCall(request).execute()
                 val html = response.body?.string() ?: return@withContext LinkMetadata()
 
                 val document = Jsoup.parse(html)
-                
+
                 val title = document.select("meta[property=og:title]").attr("content").takeIf { it.isNotBlank() }
                     ?: document.select("meta[name=twitter:title]").attr("content").takeIf { it.isNotBlank() }
                     ?: document.title().takeIf { it.isNotBlank() }
 
-                val description = document.select("meta[property=og:description]").attr("content").takeIf { it.isNotBlank() }
-                    ?: document.select("meta[name=twitter:description]").attr("content").takeIf { it.isNotBlank() }
-                    ?: document.select("meta[name=description]").attr("content").takeIf { it.isNotBlank() }
+                val description =
+                    document.select("meta[property=og:description]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=twitter:description]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=description]").attr("content").takeIf { it.isNotBlank() }
 
-                val imageUrl = document.select("meta[property=og:image]").attr("content").takeIf { it.isNotBlank() }
-                    ?: document.select("meta[name=twitter:image]").attr("content").takeIf { it.isNotBlank() }
+                val imageUrl =
+                    document.select("meta[property=og:image]").attr("content").takeIf { it.isNotBlank() }
+                        ?: document.select("meta[name=twitter:image]").attr("content").takeIf { it.isNotBlank() }
 
                 // Clean YouTube title
                 val cleanTitle = title?.let {
@@ -164,27 +228,6 @@ class MetadataFetchWorker @AssistedInject constructor(
                 LinkMetadata()
             }
         }
-    }
-
-    private fun extractMetaTag(html: String, property: String): String? {
-        // Try og: property
-        val ogRegex = """<meta[^>]*property=["']$property["'][^>]*content=["']([^"']+)["']""".toRegex(RegexOption.IGNORE_CASE)
-        ogRegex.find(html)?.groupValues?.getOrNull(1)?.let { return it }
-
-        // Try name attribute
-        val nameRegex = """<meta[^>]*name=["']$property["'][^>]*content=["']([^"']+)["']""".toRegex(RegexOption.IGNORE_CASE)
-        nameRegex.find(html)?.groupValues?.getOrNull(1)?.let { return it }
-
-        // Try reversed order (content before property/name)
-        val reversedRegex = """<meta[^>]*content=["']([^"']+)["'][^>]*property=["']$property["']""".toRegex(RegexOption.IGNORE_CASE)
-        reversedRegex.find(html)?.groupValues?.getOrNull(1)?.let { return it }
-
-        return null
-    }
-
-    private fun extractTitleTag(html: String): String? {
-        val titleRegex = """<title>([^<]+)</title>""".toRegex(RegexOption.IGNORE_CASE)
-        return titleRegex.find(html)?.groupValues?.getOrNull(1)?.trim()
     }
 
     // --- REDDIT METADATA ---
@@ -237,17 +280,17 @@ class MetadataFetchWorker @AssistedInject constructor(
             val gson = Gson()
             val listType = object : TypeToken<List<RedditResponse>>() {}.type
             val responses: List<RedditResponse> = gson.fromJson(jsonData, listType)
-            
+
             val postData = responses.firstOrNull()?.data?.children?.firstOrNull()?.data
                 ?: return LinkMetadata()
-                
+
             val title = postData.title
             val description = postData.selftext?.takeIf { it.isNotBlank() }
                 ?: postData.subredditNamePrefixed
-                
+
             var imageUrl = ""
             val urlOverridden = postData.urlOverriddenByDest ?: ""
-            
+
             if (urlOverridden.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp)(?:\\?.*)?$"))) {
                 imageUrl = urlOverridden
             } else {
@@ -256,21 +299,21 @@ class MetadataFetchWorker @AssistedInject constructor(
                     imageUrl = sourceUrl.replace("&amp;", "&")
                 }
             }
-            
+
             if (imageUrl.isBlank()) {
                 val thumb = postData.thumbnail ?: ""
                 if (thumb.startsWith("http")) {
                     imageUrl = thumb
                 }
             }
-            
+
             LinkMetadata(title, description, imageUrl)
         } catch (e: Exception) {
             LinkMetadata()
         }
     }
 
-    // --- MICROLINK (General) ---
+    // --- MICROLINK (Ultimate Fallback — rate-limited: 50 req/day) ---
     private suspend fun fetchMicrolinkMetadata(targetUrl: String): LinkMetadata {
         return withContext(Dispatchers.IO) {
             try {
@@ -286,8 +329,8 @@ class MetadataFetchWorker @AssistedInject constructor(
                         val data = jsonObject.getJSONObject("data")
 
                         LinkMetadata(
-                            title = data.optString("title"),
-                            description = data.optString("description"),
+                            title = data.optString("title").takeIf { it.isNotBlank() },
+                            description = data.optString("description").takeIf { it.isNotBlank() },
                             imageUrl = data.optJSONObject("image")?.optString("url")
                         )
                     } else {
@@ -324,6 +367,8 @@ class MetadataFetchWorker @AssistedInject constructor(
 
     companion object {
         const val KEY_LINK_ID = "link_id"
+        /** Pass `true` to bypass the local cache and force a fresh network fetch. */
+        const val KEY_IS_FORCED_REFRESH = "is_forced_refresh"
         const val WORK_NAME = "metadata_fetch_worker"
     }
 }

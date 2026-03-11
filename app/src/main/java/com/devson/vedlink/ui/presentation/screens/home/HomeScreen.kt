@@ -84,7 +84,7 @@ fun HomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 120.dp)
             ) {
-                // ── Greeting ──────────────────────────────────────────────────
+                //  Greeting 
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
@@ -105,7 +105,7 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Stats ─────────────────────────────────────────────────────
+                //  Stats 
                 AnimatedVisibility(
                     visible = !uiState.isLoading && uiState.showStats,
                     enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.9f),
@@ -138,7 +138,7 @@ fun HomeScreen(
 
                 if (uiState.showStats) Spacer(modifier = Modifier.height(24.dp))
 
-                // ── Quick Actions ─────────────────────────────────────────────
+                //  Quick Actions 
                 AnimatedVisibility(
                     visible = uiState.showQuickActions,
                     enter = fadeIn(tween(700)) + slideInHorizontally(tween(700)) { it / 2 },
@@ -180,7 +180,7 @@ fun HomeScreen(
 
                 if (uiState.showQuickActions) Spacer(modifier = Modifier.height(32.dp))
 
-                // ── Jump Back In ──────────────────────────────────────────────
+                //  Jump Back In 
                 AnimatedVisibility(
                     visible = uiState.showRecentLinks && uiState.recentLinks.isNotEmpty(),
                     enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 },
@@ -246,7 +246,7 @@ fun HomeScreen(
                 }
             }
 
-            // ── Animated FAB ──────────────────────────────────────────────────
+            //  Animated FAB 
             AnimatedVisibility(
                 visible = !showAddDialog,
                 enter = scaleIn(animationSpec = tween(durationMillis = 300)),
@@ -289,7 +289,7 @@ fun HomeScreen(
     }
 }
 
-// ── Jump Back In Card ─────────────────────────────────────────────────────────
+//  Jump Back In Card 
 
 @Composable
 private fun JumpBackInCard(
@@ -425,7 +425,7 @@ private fun JumpBackInCard(
     }
 }
 
-// ── Supporting composables ────────────────────────────────────────────────────
+//  Supporting composables 
 
 @Composable
 fun StatCard(
