@@ -37,13 +37,24 @@ class MainActivity : ComponentActivity() {
             val themeMode by themePreferences.themeMode.collectAsState(initial = 0)
             val colorScheme by themePreferences.colorScheme.collectAsState(initial = 0)
             val dynamicColor by themePreferences.dynamicColor.collectAsState(initial = false)
-            val amoledMode by themePreferences.amoledMode.collectAsState(initial = false)
+            val isNavBarTransparent by themePreferences.navBarTransparent.collectAsState(initial = false)
+            val isBackgroundBlurEnabled by themePreferences.isBackgroundBlurEnabled.collectAsState(initial = true)
+
+            val forceDark = when (themeMode) {
+                1 -> false
+                2 -> true
+                else -> null
+            }
+            
+            val palette = com.devson.vedlink.ui.presentation.theme.AppThemePalette.entries.getOrElse(colorScheme) { 
+                com.devson.vedlink.ui.presentation.theme.AppThemePalette.CINEMATIC 
+            }
 
             VedLinkTheme(
-                themeMode = themeMode,
-                colorSchemeIndex = colorScheme,
-                useDynamicColor = dynamicColor,
-                useAmoledMode = amoledMode
+                forceDark = forceDark,
+                dynamicColor = dynamicColor,
+                palette = palette,
+                isNavBarTransparent = isNavBarTransparent
             ) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -81,7 +92,9 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .windowInsetsPadding(
+                                    if (isNavBarTransparent) WindowInsets(0, 0, 0, 0) else WindowInsets.navigationBars
+                                )
                         ) {
                             ModernBoxedBottomNavBar(
                                 currentRoute = currentRoute,

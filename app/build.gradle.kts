@@ -131,6 +131,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
@@ -152,7 +153,7 @@ dependencies {
     // Hilt Dependency Injection
     val hiltVersion = "2.52"
     implementation("com.google.dagger:hilt-android:$hiltVersion")
-    ksp("com.google.dagger:hilt-compiler:$hiltVersion")
+    ksp("com.google.dagger:hilt-android-compiler:$hiltVersion")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // *** ADD THESE HILT WORKMANAGER DEPENDENCIES ***

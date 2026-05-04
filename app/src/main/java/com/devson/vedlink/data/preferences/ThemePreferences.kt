@@ -45,6 +45,10 @@ class ThemePreferences @Inject constructor(
     private val HOME_SHOW_QUICK_ACTIONS_KEY = booleanPreferencesKey("home_show_quick_actions")
     private val HOME_SHOW_RECENT_LINKS_KEY = booleanPreferencesKey("home_show_recent_links")
 
+    // Additional Appearance Preferences
+    private val NAV_BAR_TRANSPARENT_KEY = booleanPreferencesKey("nav_bar_transparent")
+    private val BACKGROUND_BLUR_ENABLED_KEY = booleanPreferencesKey("background_blur_enabled")
+
     // Flows
     val isDarkMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[IS_DARK_MODE] ?: false
@@ -194,6 +198,27 @@ class ThemePreferences @Inject constructor(
     suspend fun setHomeShowRecentLinks(show: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HOME_SHOW_RECENT_LINKS_KEY] = show
+        }
+    }
+
+    // Additional Appearance
+    val navBarTransparent: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[NAV_BAR_TRANSPARENT_KEY] ?: false
+    }
+
+    val isBackgroundBlurEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[BACKGROUND_BLUR_ENABLED_KEY] ?: true
+    }
+
+    suspend fun setNavBarTransparent(transparent: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NAV_BAR_TRANSPARENT_KEY] = transparent
+        }
+    }
+
+    suspend fun setBackgroundBlurEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[BACKGROUND_BLUR_ENABLED_KEY] = enabled
         }
     }
 }

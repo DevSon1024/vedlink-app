@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Palette
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateToAbout: () -> Unit = {},
-    onNavigateToLookAndFeel: () -> Unit = {},
+    onNavigateToAppearance: () -> Unit = {},
     onNavigateToCustomizeHome: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -76,7 +76,7 @@ fun SettingsScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -139,9 +139,9 @@ fun SettingsScreen(
 
             SettingsItem(
                 icon = Icons.Default.Palette,
-                title = "Look & feel",
+                title = "Appearance",
                 subtitle = "Customize theme and colors",
-                onClick = onNavigateToLookAndFeel
+                onClick = onNavigateToAppearance
             )
 
             // Storage Section

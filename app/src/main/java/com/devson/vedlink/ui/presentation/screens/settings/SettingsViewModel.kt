@@ -18,6 +18,7 @@ import java.io.InputStreamReader
 import javax.inject.Inject
 import coil.imageLoader
 import com.google.gson.annotations.SerializedName
+import com.devson.vedlink.ui.presentation.theme.AppThemePalette
 
 data class SettingsUiState(
     val totalLinks: Int = 0,
@@ -69,6 +70,32 @@ class SettingsViewModel @Inject constructor(
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
+    // --- Appearance / Theme Flows ---
+    val isDarkTheme: StateFlow<Boolean?> = themePreferences.themeMode.map { mode ->
+        when (mode) {
+            1 -> false
+            2 -> true
+            else -> null // System default
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    val dynamicColor: StateFlow<Boolean> = themePreferences.dynamicColor
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    val selectedPalette: StateFlow<AppThemePalette> = themePreferences.colorScheme.map { schemeIndex ->
+        try {
+            com.devson.vedlink.ui.presentation.theme.AppThemePalette.entries[schemeIndex]
+        } catch (e: Exception) {
+            com.devson.vedlink.ui.presentation.theme.AppThemePalette.BLUE
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, com.devson.vedlink.ui.presentation.theme.AppThemePalette.BLUE)
+
+    val isNavBarTransparent: StateFlow<Boolean> = themePreferences.navBarTransparent
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    val isBackgroundBlurEnabled: StateFlow<Boolean> = themePreferences.isBackgroundBlurEnabled
+        .stateIn(viewModelScope, SharingStarted.Lazily, true)
+
     init {
         loadStats()
         loadPreferences()
@@ -95,6 +122,44 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // --- Theme Setters ---
+    fun setDarkTheme(isDark: Boolean) {
+        viewModelScope.launch {
+            themePreferences.setThemeMode(if (isDark) 2 else 1)
+        }
+    }
+
+    fun resetDarkTheme() {
+        viewModelScope.launch {
+            themePreferences.setThemeMode(0) // System default
+        }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferences.setDynamicColor(enabled)
+        }
+    }
+
+    fun setSelectedPalette(palette: com.devson.vedlink.ui.presentation.theme.AppThemePalette) {
+        viewModelScope.launch {
+            themePreferences.setColorScheme(palette.ordinal)
+        }
+    }
+
+    fun setNavBarTransparent(transparent: Boolean) {
+        viewModelScope.launch {
+            themePreferences.setNavBarTransparent(transparent)
+        }
+    }
+
+    fun setBackgroundBlurEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferences.setBackgroundBlurEnabled(enabled)
+        }
+    }
+
+    // --- Legacy / General Setters ---
     fun toggleDarkMode() {
         viewModelScope.launch {
             val newValue = !_uiState.value.isDarkMode

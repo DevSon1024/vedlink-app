@@ -2,64 +2,74 @@ package com.devson.vedlink.ui.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light Theme Colors
-val Primary = Color(0xFF6750A4)
-val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFFEADDFF)
-val OnPrimaryContainer = Color(0xFF21005D)
+//  NOSVED PLAYER - Shared colour tokens
+//  Full per-palette ColorSchemes live in AppThemePalette.kt.
+//  Constants here are used directly by Theme.kt default schemes and in the
+//  player UI (seek-bar tint, status badges, etc.).
 
-val Secondary = Color(0xFF625B71)
-val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFE8DEF8)
-val OnSecondaryContainer = Color(0xFF1D192B)
+// CINEMATIC palette raw tokens
+//  Primary Accent: Electric Cyan
+val NosvedCyan80        = Color(0xFF80EEFF)   // Light tint  (dark-theme primary)
+val NosvedCyan40        = Color(0xFF00BCD4)   // Mid tone    (light-theme primary)
+val NosvedCyanDeep      = Color(0xFF006978)   // Deep        (primaryContainer text, dark)
+val NosvedCyanAccent    = Color(0xFF00E5FF)   // Pure neon   (seek-bar, highlights)
 
-val Tertiary = Color(0xFF7D5260)
-val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFFFD8E4)
-val OnTertiaryContainer = Color(0xFF31111D)
+//  Secondary Accent: Amber / Gold
+val NosvedAmber80       = Color(0xFFFFE082)   // Light tint  (dark-theme secondary)
+val NosvedAmber40       = Color(0xFFFFB300)   // Saturated   (light-theme secondary)
 
-val Error = Color(0xFFB3261E)
-val OnError = Color(0xFFFFFFFF)
-val ErrorContainer = Color(0xFFF9DEDC)
-val OnErrorContainer = Color(0xFF410E0B)
+//  Tertiary: Deep Violet
+val NosvedViolet80      = Color(0xFFD0BCFF)   // Light tint  (dark-theme tertiary)
+val NosvedViolet40      = Color(0xFF7C4DFF)   // Saturated   (light-theme tertiary)
 
-val Background = Color(0xFFFFFBFE)
-val OnBackground = Color(0xFF1C1B1F)
-val Surface = Color(0xFFFFFBFE)
-val OnSurface = Color(0xFF1C1B1F)
-val SurfaceVariant = Color(0xFFE7E0EC)
-val OnSurfaceVariant = Color(0xFF49454F)
+// NOSVED BLUE palette raw tokens
+val NosvedBlue80        = Color(0xFFAEC6FF)   // Light tint  (dark theme primary)
+val NosvedBlue40        = Color(0xFF1A73E8)   // Saturated   (light theme primary)
+val NosvedBlueDeep      = Color(0xFF0D47A1)   // Deep blue   (dark primaryContainer text)
 
-val Outline = Color(0xFF79747E)
-val OutlineVariant = Color(0xFFCAC4D0)
+val NosvedIndigo80      = Color(0xFFC5CAE9)   // Light tint  (dark theme secondary)
+val NosvedIndigo40      = Color(0xFF3949AB)   // Medium      (light theme secondary)
 
-// Dark Theme Colors
-val DarkPrimary = Color(0xFFD0BCFF)
-val DarkOnPrimary = Color(0xFF381E72)
-val DarkPrimaryContainer = Color(0xFF4F378B)
-val DarkOnPrimaryContainer = Color(0xFFEADDFF)
+val NosvedGreen80       = Color(0xFFB9F6CA)   // Light       (dark theme tertiary)
+val NosvedGreen40       = Color(0xFF1E8E3E)   // Medium      (light theme tertiary)
 
-val DarkSecondary = Color(0xFFCCC2DC)
-val DarkOnSecondary = Color(0xFF332D41)
-val DarkSecondaryContainer = Color(0xFF4A4458)
-val DarkOnSecondaryContainer = Color(0xFFE8DEF8)
+//  Blue light surfaces (Google Play / Material 3 style)
+val NosvedBlueLightBg       = Color(0xFFEEF1FB)   // Soft periwinkle-blue background
+val NosvedBlueLightSurface  = Color(0xFFFFFFFF)   // Pure white cards / dialogs
+val NosvedBlueLightSurface2 = Color(0xFFF3F6FF)   // Slightly tinted surface container
+val NosvedBlueLightOutline  = Color(0xFFC5C9E0)   // Border / divider
+val NosvedBlueLightOnSurf   = Color(0xFF1A1C22)   // Near-black primary text
+val NosvedBlueLightSubtext  = Color(0xFF44474F)   // Secondary / hint text
+val NosvedBlueLightPrimCont = Color(0xFFDAE2FF)   // Primary container (chips, badges)
+val NosvedBlueLightSecCont  = Color(0xFFE0E5FF)   // Secondary container (icon bgs)
 
-val DarkTertiary = Color(0xFFEFB8C8)
-val DarkOnTertiary = Color(0xFF492532)
-val DarkTertiaryContainer = Color(0xFF633B48)
-val DarkOnTertiaryContainer = Color(0xFFFFD8E4)
+//  Blue dark surfaces
+val NosvedBlueDarkBg        = Color(0xFF0E1117)   // Background
+val NosvedBlueDarkSurface   = Color(0xFF161B27)   // Card / surface level 1
+val NosvedBlueDarkSurface2  = Color(0xFF1E2537)   // Card / surface level 2 (elevated)
+val NosvedBlueDarkSurface3  = Color(0xFF222C3F)   // Highest surface container
+val NosvedBlueDarkOutline   = Color(0xFF3A4660)   // Border / outline
+val NosvedBlueDarkOnSurface = Color(0xFFE2E5F0)   // Primary text on dark
+val NosvedBlueDarkSubtext   = Color(0xFF8D97B2)   // Secondary / hint text
 
-val DarkError = Color(0xFFF2B8B5)
-val DarkOnError = Color(0xFF601410)
-val DarkErrorContainer = Color(0xFF8C1D18)
-val DarkOnErrorContainer = Color(0xFFF9DEDC)
+// Shared surface tokens (Cinematic — default)
+val NosvedLightBg       = Color(0xFFF0F4F8)
+val NosvedLightSurface  = Color(0xFFFFFFFF)
+val NosvedLightSurface2 = Color(0xFFE8EDF4)
+val NosvedLightOutline  = Color(0xFFB0BAC8)
+val NosvedLightOnSurf   = Color(0xFF0D1117)
+val NosvedLightSubtext  = Color(0xFF444F5C)
+val NosvedLightPrimCont = Color(0xFFB2EBF2)
+val NosvedLightSecCont  = Color(0xFFFFECB3)
 
-val DarkBackground = Color(0xFF1C1B1F)
-val DarkOnBackground = Color(0xFFE6E1E5)
-val DarkSurface = Color(0xFF1C1B1F)
-val DarkOnSurface = Color(0xFFE6E1E5)
-val DarkSurfaceVariant = Color(0xFF49454F)
-val DarkOnSurfaceVariant = Color(0xFFCAC4D0)
+val NosvedDarkBg        = Color(0xFF0A0C10)
+val NosvedDarkSurface   = Color(0xFF0F1318)
+val NosvedDarkSurface2  = Color(0xFF161B22)
+val NosvedDarkSurface3  = Color(0xFF1C222C)
+val NosvedDarkOutline   = Color(0xFF2A3340)
+val NosvedDarkOnSurface = Color(0xFFDDE3EC)
+val NosvedDarkSubtext   = Color(0xFF8896A8)
 
-val DarkOutline = Color(0xFF938F99)
-val DarkOutlineVariant = Color(0xFF49454F)
+// Error / status
+val NosvedErrorRed      = Color(0xFFCF6679)   // Error / destructive
+val NosvedSeekBarTint   = NosvedCyanAccent    // Progress / scrubber tint (Cinematic default)
