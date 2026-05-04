@@ -49,7 +49,14 @@ fun NavGraph(
                         restoreState = true
                     }
                 },
-                onNavigateToDetails = onNavigateToDetails
+                onNavigateToDetails = onNavigateToDetails,
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
             )
         }
 
