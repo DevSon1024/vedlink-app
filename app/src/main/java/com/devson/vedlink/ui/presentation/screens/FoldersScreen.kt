@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.screens.folders
+package com.devson.vedlink.ui.presentation.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,6 +41,10 @@ import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
+import com.devson.vedlink.ui.viewmodel.FolderItem
+import com.devson.vedlink.ui.viewmodel.FoldersUiEvent
+import com.devson.vedlink.ui.viewmodel.FoldersViewModel
+import kotlin.collections.get
 
 fun getCleanDomainName(domain: String): String {
     return domain

@@ -1,31 +1,20 @@
-package com.devson.vedlink.ui.presentation.screens.details
+package com.devson.vedlink.ui.presentation.util
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.devson.vedlink.ui.presentation.screens.LinkDetailsScreen
+import com.devson.vedlink.ui.viewmodel.LinkDetailsViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -125,8 +114,12 @@ fun LinkDetailsPagerScreen(
                     onNavigateBack = onNavigateBack,
                     viewModel = pageViewModel,
                     pageText = "${pageIndex + 1} / ${linkIds.size}",
-                    onPreviousPage = if (pageIndex > 0) { { scope.launch { pagerState.animateScrollToPage(pageIndex - 1) } } } else null,
-                    onNextPage = if (pageIndex < linkIds.lastIndex) { { scope.launch { pagerState.animateScrollToPage(pageIndex + 1) } } } else null
+                    onPreviousPage = if (pageIndex > 0) {
+                        { scope.launch { pagerState.animateScrollToPage(pageIndex - 1) } }
+                    } else null,
+                    onNextPage = if (pageIndex < linkIds.lastIndex) {
+                        { scope.launch { pagerState.animateScrollToPage(pageIndex + 1) } }
+                    } else null
                 )
             }
         }

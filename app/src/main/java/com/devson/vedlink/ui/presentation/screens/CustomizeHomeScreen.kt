@@ -1,5 +1,6 @@
-package com.devson.vedlink.ui.presentation.screens.customizehome
+package com.devson.vedlink.ui.presentation.screens
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devson.vedlink.ui.presentation.components.*
+import com.devson.vedlink.ui.presentation.components.SettingsCard
+import com.devson.vedlink.ui.presentation.components.SettingsDivider
+import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
+import com.devson.vedlink.ui.presentation.components.SettingsSwitchItem
+import com.devson.vedlink.ui.viewmodel.CustomizeHomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +40,7 @@ fun CustomizeHomeScreen(
         val backgroundColor = MaterialTheme.colorScheme.background
         val darkTheme = isDark ?: isSystemInDarkTheme()
         SideEffect {
-            val window = (view.context as android.app.Activity).window
+            val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
@@ -109,7 +114,7 @@ fun CustomizeHomeScreen(
 
             // Section header
             SettingsSectionLabel("Home Sections")
-            
+
             SettingsCard {
                 SettingsSwitchItem(
                     icon = Icons.Default.BarChart,

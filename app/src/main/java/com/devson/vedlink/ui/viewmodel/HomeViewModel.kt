@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.screens.home
+package com.devson.vedlink.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -32,7 +32,7 @@ sealed class HomeUiEvent {
     data class ShowSuccess(val message: String) : HomeUiEvent()
 }
 
-@OptIn(kotlinx.coroutines.FlowPreview::class)
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,

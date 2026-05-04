@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.screens.favorites
+package com.devson.vedlink.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

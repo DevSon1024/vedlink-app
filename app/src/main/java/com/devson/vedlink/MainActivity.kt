@@ -16,7 +16,8 @@ import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.ui.presentation.components.ModernBoxedBottomNavBar
 import com.devson.vedlink.ui.presentation.navigation.NavGraph
 import com.devson.vedlink.ui.presentation.navigation.Screen
-import com.devson.vedlink.ui.presentation.theme.VedLinkTheme
+import com.devson.vedlink.ui.theme.VedLinkTheme
+import com.devson.vedlink.ui.theme.AppThemePalette
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -46,8 +47,8 @@ class MainActivity : ComponentActivity() {
                 else -> null
             }
             
-            val palette = com.devson.vedlink.ui.presentation.theme.AppThemePalette.entries.getOrElse(colorScheme) { 
-                com.devson.vedlink.ui.presentation.theme.AppThemePalette.CINEMATIC 
+            val palette = AppThemePalette.entries.getOrElse(colorScheme) {
+                AppThemePalette.CINEMATIC
             }
 
             VedLinkTheme(

@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.theme
+package com.devson.vedlink.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme

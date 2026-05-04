@@ -1,5 +1,6 @@
-package com.devson.vedlink.ui.presentation.screens.about
+package com.devson.vedlink.ui.presentation.screens
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -33,7 +34,7 @@ import com.devson.vedlink.ui.presentation.components.SettingsCard
 import com.devson.vedlink.ui.presentation.components.SettingsDivider
 import com.devson.vedlink.ui.presentation.components.SettingsNavRow
 import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
-import com.devson.vedlink.ui.presentation.screens.settings.SettingsViewModel
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +52,7 @@ fun AboutScreen(
         val backgroundColor = MaterialTheme.colorScheme.background
         val darkTheme = isDark ?: isSystemInDarkTheme()
         SideEffect {
-            val window = (view.context as android.app.Activity).window
+            val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme

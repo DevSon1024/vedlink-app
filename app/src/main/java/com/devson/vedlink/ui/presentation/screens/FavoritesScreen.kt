@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.screens.favorites
+package com.devson.vedlink.ui.presentation.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -26,13 +26,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
+import com.devson.vedlink.ui.viewmodel.FavoritesUiEvent
+import com.devson.vedlink.ui.viewmodel.FavoritesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable

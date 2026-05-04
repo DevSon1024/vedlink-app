@@ -1,14 +1,13 @@
-package com.devson.vedlink.ui.presentation.screens.settings
+package com.devson.vedlink.ui.presentation.screens
 
+import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,9 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -33,6 +29,7 @@ import com.devson.vedlink.ui.presentation.components.SettingsDivider
 import com.devson.vedlink.ui.presentation.components.SettingsNavRow
 import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
 import com.devson.vedlink.ui.presentation.components.SettingsSwitchItem
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,7 +56,7 @@ fun SettingsScreen(
         val backgroundColor = MaterialTheme.colorScheme.background
         val darkTheme = isDark ?: isSystemInDarkTheme()
         SideEffect {
-            val window = (view.context as android.app.Activity).window
+            val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
@@ -243,7 +240,8 @@ fun SettingsScreen(
                     title = "Export Data",
                     subtitle = "Backup links to JSON",
                     onClick = {
-                        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                        val timeStamp =
+                            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                         exportLauncher.launch("vedlink_backup_$timeStamp.json")
                     }
                 )

@@ -1,14 +1,13 @@
-package com.devson.vedlink.ui.presentation.screens.details
+package com.devson.vedlink.ui.presentation.screens
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -39,7 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
-import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.ui.viewmodel.LinkDetailsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -591,7 +590,7 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun MetadataRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String
 ) {
@@ -668,8 +667,8 @@ private suspend fun downloadImage(
             val timestamp = System.currentTimeMillis()
             val finalFileName = "${cleanFileName}_${timestamp}.jpg"
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                val values = android.content.ContentValues().apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, finalFileName)
                     put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                     put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)

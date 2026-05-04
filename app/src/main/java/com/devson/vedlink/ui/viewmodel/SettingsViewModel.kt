@@ -1,9 +1,10 @@
-package com.devson.vedlink.ui.presentation.screens.settings
+package com.devson.vedlink.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.annotation.ExperimentalCoilApi
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.repository.LinkRepository
 import com.devson.vedlink.domain.model.Link
@@ -18,7 +19,9 @@ import java.io.InputStreamReader
 import javax.inject.Inject
 import coil.imageLoader
 import com.google.gson.annotations.SerializedName
-import com.devson.vedlink.ui.presentation.theme.AppThemePalette
+import com.devson.vedlink.ui.theme.AppThemePalette
+import java.io.File
+import java.net.URI
 
 data class SettingsUiState(
     val totalLinks: Int = 0,
@@ -84,11 +87,11 @@ class SettingsViewModel @Inject constructor(
 
     val selectedPalette: StateFlow<AppThemePalette> = themePreferences.colorScheme.map { schemeIndex ->
         try {
-            com.devson.vedlink.ui.presentation.theme.AppThemePalette.entries[schemeIndex]
+            AppThemePalette.entries[schemeIndex]
         } catch (e: Exception) {
-            com.devson.vedlink.ui.presentation.theme.AppThemePalette.BLUE
+            AppThemePalette.BLUE
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, com.devson.vedlink.ui.presentation.theme.AppThemePalette.BLUE)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, AppThemePalette.BLUE)
 
     val isNavBarTransparent: StateFlow<Boolean> = themePreferences.navBarTransparent
         .stateIn(viewModelScope, SharingStarted.Lazily, false)
@@ -141,7 +144,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setSelectedPalette(palette: com.devson.vedlink.ui.presentation.theme.AppThemePalette) {
+    fun setSelectedPalette(palette: AppThemePalette) {
         viewModelScope.launch {
             themePreferences.setColorScheme(palette.ordinal)
         }
@@ -197,7 +200,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun calculateDirectorySize(directory: java.io.File): Long {
+    private fun calculateDirectorySize(directory: File): Long {
         var size: Long = 0
         if (directory.exists()) {
             val files = directory.listFiles()
@@ -223,7 +226,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    @OptIn(coil.annotation.ExperimentalCoilApi::class)
+    @OptIn(ExperimentalCoilApi::class)
     fun clearCache(context: Context) {
         viewModelScope.launch {
             try {
@@ -372,9 +375,9 @@ class SettingsViewModel @Inject constructor(
     private fun normaliseUrl(url: String): String {
         return try {
             val trimmed = url.trim()
-            val uri = java.net.URI(trimmed)
+            val uri = URI(trimmed)
             // Lowercase only the scheme and host; keep path/query/fragment as-is
-            val normUri = java.net.URI(
+            val normUri = URI(
                 uri.scheme?.lowercase(),
                 uri.userInfo,
                 uri.host?.lowercase(),
@@ -392,7 +395,7 @@ class SettingsViewModel @Inject constructor(
     // Helper to extract clean domain from URL
     private fun extractDomain(url: String): String {
         return try {
-            val uri = java.net.URI(url)
+            val uri = URI(url)
             val host = uri.host
             if (host != null && host.startsWith("www.")) {
                 host.substring(4)

@@ -6,16 +6,16 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.devson.vedlink.ui.presentation.screens.about.AboutScreen
-import com.devson.vedlink.ui.presentation.screens.details.LinkDetailsScreen
-import com.devson.vedlink.ui.presentation.screens.details.LinkDetailsPagerScreen
-import com.devson.vedlink.ui.presentation.screens.favorites.FavoritesScreen
-import com.devson.vedlink.ui.presentation.screens.folders.FoldersScreen
-import com.devson.vedlink.ui.presentation.screens.home.HomeScreen
-import com.devson.vedlink.ui.presentation.screens.savedlinks.SavedLinksScreen
-import com.devson.vedlink.ui.presentation.screens.settings.SettingsScreen
-import com.devson.vedlink.ui.presentation.screens.appeareance.AppearanceSettingsScreen
-import com.devson.vedlink.ui.presentation.screens.customizehome.CustomizeHomeScreen
+import com.devson.vedlink.ui.presentation.screens.AboutScreen
+import com.devson.vedlink.ui.presentation.screens.LinkDetailsScreen
+import com.devson.vedlink.ui.presentation.util.LinkDetailsPagerScreen
+import com.devson.vedlink.ui.presentation.screens.FavoritesScreen
+import com.devson.vedlink.ui.presentation.screens.FoldersScreen
+import com.devson.vedlink.ui.presentation.screens.HomeScreen
+import com.devson.vedlink.ui.presentation.screens.SavedLinksScreen
+import com.devson.vedlink.ui.presentation.screens.SettingsScreen
+import com.devson.vedlink.ui.presentation.screens.AppearanceSettingsScreen
+import com.devson.vedlink.ui.presentation.screens.CustomizeHomeScreen
 
 @Composable
 fun NavGraph(

@@ -1,5 +1,6 @@
-package com.devson.vedlink.ui.presentation.screens.appeareance
+package com.devson.vedlink.ui.presentation.screens
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -37,14 +38,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.core.os.LocaleListCompat
+import androidx.core.view.WindowCompat
 import com.devson.vedlink.ui.presentation.components.SettingsCard
 import com.devson.vedlink.ui.presentation.components.SettingsDivider
 import com.devson.vedlink.ui.presentation.components.SettingsNavRow
 import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
 import com.devson.vedlink.ui.presentation.components.SettingsSwitchItem
-import com.devson.vedlink.ui.presentation.screens.settings.SettingsViewModel
-import com.devson.vedlink.ui.presentation.theme.AppThemePalette
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
+import com.devson.vedlink.ui.theme.AppThemePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,14 +62,14 @@ fun AppearanceSettingsScreen(
     val isBackgroundBlurEnabled by settingsViewModel.isBackgroundBlurEnabled.collectAsState()
 
     // Status bar color handling
-    val view = androidx.compose.ui.platform.LocalView.current
+    val view = LocalView.current
     if (!view.isInEditMode) {
         val backgroundColor = MaterialTheme.colorScheme.background
         val darkTheme = isDark ?: isSystemInDarkTheme()
         SideEffect {
-            val window = (view.context as android.app.Activity).window
+            val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
-            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
         }
     }

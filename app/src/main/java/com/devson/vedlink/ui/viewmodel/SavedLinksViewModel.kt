@@ -1,4 +1,4 @@
-package com.devson.vedlink.ui.presentation.screens.savedlinks
+package com.devson.vedlink.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +8,7 @@ import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.*
 import com.devson.vedlink.domain.util.MinimalMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,7 +45,7 @@ class SavedLinksViewModel @Inject constructor(
     private val _uiEvent = MutableSharedFlow<SavedLinksUiEvent>()
     val uiEvent: SharedFlow<SavedLinksUiEvent> = _uiEvent.asSharedFlow()
 
-    @kotlin.OptIn(kotlinx.coroutines.FlowPreview::class)
+    @OptIn(FlowPreview::class)
     private val rawSearchQuery = MutableStateFlow("")
 
     // Internal flow for raw links (before sorting)
@@ -69,7 +70,7 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
-    @kotlin.OptIn(kotlinx.coroutines.FlowPreview::class)
+    @OptIn(FlowPreview::class)
     private fun setupSearchDebouncing() {
         viewModelScope.launch {
             rawSearchQuery

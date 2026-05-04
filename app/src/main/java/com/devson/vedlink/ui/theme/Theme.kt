@@ -1,5 +1,6 @@
-package com.devson.vedlink.ui.presentation.theme
+package com.devson.vedlink.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 
 val NosvedShapes = Shapes(
@@ -47,7 +49,7 @@ fun VedLinkTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as android.app.Activity).window
+            val window = (view.context as Activity).window
             val insetsController = WindowCompat.getInsetsController(window, view)
             WindowCompat.setDecorFitsSystemWindows(window, false)
             @Suppress("DEPRECATION")
@@ -76,7 +78,7 @@ fun DialogNavigationBarThemeFix() {
     val darkTheme = isSystemInDarkTheme()
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
                 @Suppress("DEPRECATION")
                 window.navigationBarColor = Color.Transparent.toArgb()
