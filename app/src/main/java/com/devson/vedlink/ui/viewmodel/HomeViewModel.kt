@@ -10,7 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
-import com.devson.vedlink.domain.util.MinimalMetadata
+import com.devson.vedlink.domain.util.ScrapedMetadata
 import com.devson.vedlink.domain.util.MetadataScraperUtil
 import javax.inject.Inject
 
@@ -23,7 +23,7 @@ data class HomeUiState(
     val showStats: Boolean = true,
     val showQuickActions: Boolean = true,
     val showRecentLinks: Boolean = true,
-    val previewMetadata: MinimalMetadata? = null,
+    val previewMetadata: ScrapedMetadata? = null,
     val isPreviewLoading: Boolean = false
 )
 
@@ -59,7 +59,7 @@ class HomeViewModel @Inject constructor(
                 .collect { url ->
                     if (isValidUrl(url)) {
                         _uiState.update { it.copy(isPreviewLoading = true) }
-                        val metadata = MetadataScraperUtil.fetchFallbackMetadata(url)
+                        val metadata = MetadataScraperUtil.fetchMetadata(url)
                         _uiState.update { it.copy(previewMetadata = metadata, isPreviewLoading = false) }
                     } else {
                         _uiState.update { it.copy(previewMetadata = null, isPreviewLoading = false) }
@@ -122,7 +122,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
+    fun saveLink(url: String, metadata: ScrapedMetadata? = null) {
         viewModelScope.launch {
             saveLinkUseCase(
                 url = url, 

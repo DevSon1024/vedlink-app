@@ -168,11 +168,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
+    // Android Link Preview for unified metadata fetching
+    implementation("com.github.vishalkumarsinghvi:Android-Link-Preview:1.1")
+
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
-
-    // Jsoup for HTML parsing & metadata extraction
-    implementation("org.jsoup:jsoup:1.18.1")
 
     // OkHttp for networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

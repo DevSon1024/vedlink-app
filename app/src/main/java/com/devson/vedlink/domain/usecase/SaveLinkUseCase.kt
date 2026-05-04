@@ -49,7 +49,7 @@ class SaveLinkUseCase @Inject constructor(
             val id = repository.insertLink(link)
 
             if (id > 0) {
-                workManagerHelper.enqueueLinkMetadataFetch(id.toInt())
+                workManagerHelper.enqueueMetadataFetch(cleanUrl, id.toInt())
             }
 
             Result.success(

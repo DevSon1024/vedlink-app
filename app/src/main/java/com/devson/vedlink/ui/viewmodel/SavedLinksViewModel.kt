@@ -6,7 +6,7 @@ import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.usecase.*
-import com.devson.vedlink.domain.util.MinimalMetadata
+import com.devson.vedlink.domain.util.ScrapedMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -127,7 +127,7 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
-    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
+    fun saveLink(url: String, metadata: ScrapedMetadata? = null) {
         viewModelScope.launch {
             saveLinkUseCase(
                 url = url,
@@ -249,7 +249,7 @@ class SavedLinksViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value.links.forEach { link ->
                 // User explicitly requested refresh → bypass cache
-                workManagerHelper.enqueueLinkMetadataFetch(link.id, isForcedRefresh = true)
+                workManagerHelper.enqueueMetadataFetch(link.url, link.id, isForcedRefresh = true)
             }
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing metadata..."))
         }
@@ -258,7 +258,10 @@ class SavedLinksViewModel @Inject constructor(
     fun refreshLink(linkId: Int) {
         viewModelScope.launch {
             // User explicitly requested refresh → bypass cache
-            workManagerHelper.enqueueLinkMetadataFetch(linkId, isForcedRefresh = true)
+            val link = _uiState.value.links.find { it.id == linkId }
+            link?.let {
+                workManagerHelper.enqueueMetadataFetch(it.url, it.id, isForcedRefresh = true)
+            }
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing link..."))
         }
     }

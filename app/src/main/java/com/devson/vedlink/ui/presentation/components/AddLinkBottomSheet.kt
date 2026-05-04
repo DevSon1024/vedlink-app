@@ -30,7 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.domain.util.MinimalMetadata
+import com.devson.vedlink.domain.util.ScrapedMetadata
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -48,7 +48,7 @@ import com.devson.vedlink.domain.util.MetadataScraperUtil
 fun EnhancedAddLinkBottomSheet(
     recentLinks: List<Link>,
     onDismiss: () -> Unit,
-    onConfirm: (String, MinimalMetadata?) -> Unit,
+    onConfirm: (String, ScrapedMetadata?) -> Unit,
     onAutoPaste: () -> Unit,
     urlInputValue: String = "",
     onUrlChange: (String) -> Unit = {}
@@ -67,7 +67,7 @@ fun EnhancedAddLinkBottomSheet(
     val scope = rememberCoroutineScope()
     
     // Internal Preview State
-    var previewMetadata by remember { mutableStateOf<MinimalMetadata?>(null) }
+    var previewMetadata by remember { mutableStateOf<ScrapedMetadata?>(null) }
     var isPreviewLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(localUrl) {
@@ -76,7 +76,7 @@ fun EnhancedAddLinkBottomSheet(
             isPreviewLoading = true
             previewMetadata = null
             previewMetadata = withContext(Dispatchers.IO) {
-                MetadataScraperUtil.fetchFallbackMetadata(localUrl)
+                MetadataScraperUtil.fetchMetadata(localUrl)
             }
             isPreviewLoading = false
         } else {
@@ -443,7 +443,7 @@ private fun isValidUrl(url: String): Boolean {
 
 @Composable
 fun LinkPreviewCard(
-    metadata: MinimalMetadata,
+    metadata: ScrapedMetadata,
     modifier: Modifier = Modifier
 ) {
     Card(

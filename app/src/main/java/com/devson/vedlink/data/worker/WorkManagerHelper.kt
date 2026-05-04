@@ -14,16 +14,11 @@ class WorkManagerHelper @Inject constructor(
     private val workManager = WorkManager.getInstance(context)
 
     /**
-     * Schedules a metadata fetch for the given link.
-     *
-     * @param linkId         The database ID of the link to fetch metadata for.
-     * @param isForcedRefresh When `true`, the Worker will bypass the local cache check and
-     *                        always make a fresh network request. Pass `true` only when the
-     *                        user explicitly taps "Refresh Link". Defaults to `false` for
-     *                        the normal Add Link flow so cached data is reused.
+     * Enqueues a metadata fetch worker for the given URL and link ID.
      */
-    fun enqueueLinkMetadataFetch(linkId: Int, isForcedRefresh: Boolean = false) {
+    fun enqueueMetadataFetch(url: String, linkId: Int, isForcedRefresh: Boolean = false) {
         val inputData = Data.Builder()
+            .putString(MetadataFetchWorker.KEY_URL, url)
             .putInt(MetadataFetchWorker.KEY_LINK_ID, linkId)
             .putBoolean(MetadataFetchWorker.KEY_IS_FORCED_REFRESH, isForcedRefresh)
             .build()
@@ -49,7 +44,7 @@ class WorkManagerHelper @Inject constructor(
         )
     }
 
-    fun cancelLinkMetadataFetch(linkId: Int) {
+    fun cancelMetadataFetch(linkId: Int) {
         workManager.cancelUniqueWork("${MetadataFetchWorker.WORK_NAME}_$linkId")
     }
 }

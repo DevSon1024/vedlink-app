@@ -10,7 +10,7 @@ import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import com.devson.vedlink.domain.util.MinimalMetadata
+import com.devson.vedlink.domain.util.ScrapedMetadata
 import javax.inject.Inject
 
 data class FavoritesUiState(
@@ -149,7 +149,7 @@ class FavoritesViewModel @Inject constructor(
         }
     }
 
-    fun saveLink(url: String, metadata: MinimalMetadata? = null) {
+    fun saveLink(url: String, metadata: ScrapedMetadata? = null) {
         viewModelScope.launch {
             saveLinkUseCase(
                 url = url,
