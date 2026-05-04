@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 fun ShimmerLinkCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -42,7 +42,7 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.8f)
                         .height(14.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(Color.White.copy(alpha = 0.15f))
                 )
                 Spacer(modifier = Modifier.height(6.dp))
@@ -50,7 +50,7 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.45f)
                         .height(10.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(Color.White.copy(alpha = 0.10f))
                 )
             }
@@ -65,14 +65,14 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerEffect()
             )
             Spacer(modifier = Modifier.width(8.dp))
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerEffect()
             )
         }
@@ -83,7 +83,7 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
 fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth().aspectRatio(0.85f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -104,7 +104,7 @@ fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.8f)
                         .height(14.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(Color.White.copy(alpha = 0.15f))
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -112,7 +112,7 @@ fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.45f)
                         .height(10.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(Color.White.copy(alpha = 0.10f))
                 )
             }
@@ -123,7 +123,7 @@ fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
                     .size(20.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .shimmerEffect()
             )
         }

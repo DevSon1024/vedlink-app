@@ -156,10 +156,10 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f),
                             title = "Favorites",
                             count = uiState.totalFavorites,
-                            icon = Icons.Default.Favorite,
+                            icon = Icons.Default.StarOutline,
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            iconColor = Color(0xFFFF5252),
-                            iconContainerColor = Color(0xFFFF5252).copy(alpha = 0.1f)
+                            iconColor = Color(0xFFFFEB3B),
+                            iconContainerColor = Color(0xFFFFEB3B).copy(alpha = 0.1f)
                         )
                     }
                 }
@@ -194,7 +194,7 @@ fun HomeScreen(
                             ActionCard(
                                 modifier = Modifier.weight(1f),
                                 icon = Icons.Default.StarOutline,
-                                title = "Starred",
+                                title = "Favorites",
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 onClick = onNavigateToFavorites
                             )
@@ -318,7 +318,7 @@ fun StatCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.large,
         color = containerColor,
         tonalElevation = 1.dp
     ) {
@@ -369,7 +369,7 @@ fun ActionCard(
 ) {
     Surface(
         modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = MaterialTheme.shapes.medium,
         color = containerColor,
         tonalElevation = 1.dp
     ) {
@@ -416,7 +416,7 @@ private fun JumpBackInCard(
         modifier = Modifier
             .width(cardWidth.dp)
             .height(200.dp),
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

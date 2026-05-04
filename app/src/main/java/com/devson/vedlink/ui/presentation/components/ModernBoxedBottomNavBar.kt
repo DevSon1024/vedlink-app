@@ -38,11 +38,11 @@ fun ModernBoxedBottomNavBar(
                 .padding(horizontal = 20.dp, vertical = 12.dp)
                 .shadow(
                     elevation = 12.dp,
-                    shape = RoundedCornerShape(30.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
-                .clip(RoundedCornerShape(30.dp))
+                .clip(MaterialTheme.shapes.extraLarge)
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
@@ -121,7 +121,7 @@ private fun ModernBoxedNavItem(
         onClick = onClick,
         modifier = Modifier
             .height(50.dp),
-        shape = RoundedCornerShape(20.dp),
+        shape = MaterialTheme.shapes.medium,
         color = containerColor
     ) {
         Row(

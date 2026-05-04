@@ -130,7 +130,7 @@ fun SettingsScreen(
             // App Info Card (Pixchive Style)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
                 tonalElevation = 0.dp
@@ -144,7 +144,7 @@ fun SettingsScreen(
                 ) {
                     Surface(
                         modifier = Modifier.size(64.dp),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.primary,
                         tonalElevation = 4.dp
                     ) {

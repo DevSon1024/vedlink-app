@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.BorderStroke
@@ -98,7 +99,7 @@ fun EnhancedAddLinkBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState, // 2. Pass state to sheet
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = MaterialTheme.shapes.medium.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)),
         containerColor = Color.Transparent,
         dragHandle = null
     ) {
@@ -110,7 +111,7 @@ fun EnhancedAddLinkBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 32.dp),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = MaterialTheme.shapes.medium.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 1.dp
             ) {
@@ -212,7 +213,7 @@ fun EnhancedAddLinkBottomSheet(
                                 }
                             }
                         ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -256,7 +257,7 @@ fun EnhancedAddLinkBottomSheet(
                             .fillMaxWidth()
                             .height(56.dp),
                         enabled = localUrl.isNotBlank(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -357,7 +358,7 @@ private fun CustomDragHandle() {
             modifier = Modifier
                 .width(40.dp)
                 .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
         )
     }
@@ -367,7 +368,7 @@ private fun CustomDragHandle() {
 private fun RecentLinkItem(link: Link) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -447,7 +448,7 @@ fun LinkPreviewCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -531,7 +532,7 @@ fun LinkPreviewSkeleton(modifier: Modifier = Modifier) {
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -556,7 +557,7 @@ fun LinkPreviewSkeleton(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.7f)
                         .height(14.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(shimmerBrush)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -564,7 +565,7 @@ fun LinkPreviewSkeleton(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(10.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(shimmerBrush)
                 )
             }

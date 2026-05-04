@@ -37,14 +37,22 @@ import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
 import com.devson.vedlink.ui.viewmodel.SavedLinksUiEvent
 import com.devson.vedlink.ui.viewmodel.SavedLinksViewModel
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
+import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SavedLinksScreen(
     onNavigateToDetails: (linkId: Int, linkIds: List<Int>) -> Unit,
-    viewModel: SavedLinksViewModel = hiltViewModel()
+    viewModel: SavedLinksViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
@@ -58,6 +66,19 @@ fun SavedLinksScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+
+    // Status bar color handling
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -140,7 +161,8 @@ fun SavedLinksScreen(
                             title = {
                                 Text(
                                     text = "Saved Links",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             },
@@ -169,7 +191,7 @@ fun SavedLinksScreen(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+                                containerColor = MaterialTheme.colorScheme.background
                             )
                         )
                     }
@@ -183,13 +205,14 @@ fun SavedLinksScreen(
                     }
                 }
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(top = paddingValues.calculateTopPadding())
                 ) {
                     if (!uiState.isSearchActive && uiState.links.isNotEmpty() && !isSelectionMode) {
                         ItemCountSection(
@@ -209,7 +232,7 @@ fun SavedLinksScreen(
                                 columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
-                                    top = 8.dp, bottom = 120.dp
+                                    top = 8.dp, bottom = paddingValues.calculateBottomPadding() + 100.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 0.dp else 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 12.dp else 10.dp),
@@ -238,7 +261,7 @@ fun SavedLinksScreen(
                                 columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
-                                    top = 8.dp, bottom = 120.dp
+                                    top = 8.dp, bottom = paddingValues.calculateBottomPadding() + 100.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(
                                     if (uiState.gridCellsCount == 1) 0.dp else 10.dp
@@ -357,13 +380,6 @@ fun SavedLinksScreen(
                 }
             }
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-        )
     }
 
     //  Bottom Sheets 
@@ -418,7 +434,7 @@ fun ViewSettingsBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         dragHandle = {
@@ -464,7 +480,7 @@ fun ViewSettingsBottomSheet(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
@@ -565,7 +581,7 @@ private fun SortChip(
     Surface(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         color = containerColor,
         tonalElevation = if (selected) 0.dp else 1.dp
     ) {
@@ -637,7 +653,7 @@ fun SearchBar(
             }
         },
         singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -656,7 +672,7 @@ fun EmptyState(modifier: Modifier = Modifier) {
     ) {
         Surface(
             modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(60.dp),
+            shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

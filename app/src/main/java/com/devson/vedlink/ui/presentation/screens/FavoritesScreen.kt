@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,17 +35,33 @@ import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
 import com.devson.vedlink.ui.viewmodel.FavoritesUiEvent
 import com.devson.vedlink.ui.viewmodel.FavoritesViewModel
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FavoritesScreen(
     onNavigateToDetails: (Int) -> Unit,
-    viewModel: FavoritesViewModel = hiltViewModel()
+    viewModel: FavoritesViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Status bar color handling
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: androidx.compose.foundation.isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     // Selection mode state
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -140,7 +157,8 @@ fun FavoritesScreen(
                         title = {
                             Text(
                                 text = "Favorites",
-                                style = MaterialTheme.typography.headlineMedium,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
@@ -157,7 +175,7 @@ fun FavoritesScreen(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
+                            containerColor = MaterialTheme.colorScheme.background
                         )
                     )
                 }
@@ -167,8 +185,8 @@ fun FavoritesScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
             ) {
+
                 when {
                     uiState.isLoading -> {
                         CircularProgressIndicator(
@@ -191,8 +209,8 @@ fun FavoritesScreen(
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
-                                    top = 8.dp,
-                                    bottom = 120.dp
+                                    top = paddingValues.calculateTopPadding() + 8.dp,
+                                    bottom = paddingValues.calculateBottomPadding() + 100.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -247,8 +265,8 @@ fun FavoritesScreen(
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
-                                    top = 8.dp,
-                                    bottom = 120.dp
+                                    top = paddingValues.calculateTopPadding() + 8.dp,
+                                    bottom = paddingValues.calculateBottomPadding() + 100.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -305,7 +323,7 @@ fun FavoritesScreen(
                     exit = scaleOut(animationSpec = tween(durationMillis = 300)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 100.dp)
+                        .padding(bottom = paddingValues.calculateBottomPadding() + 48.dp)
                 ) {
                     FloatingActionButton(
                         onClick = { showAddDialog = true },

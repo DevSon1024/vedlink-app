@@ -66,10 +66,10 @@ fun LinkCard(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = MaterialTheme.shapes.large
                 ) else Modifier
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -95,7 +95,7 @@ fun LinkCard(
                         contentDescription = link.title,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                            .clip(MaterialTheme.shapes.large.copy(bottomStart = androidx.compose.foundation.shape.CornerSize(0.dp), bottomEnd = androidx.compose.foundation.shape.CornerSize(0.dp))),
                         contentScale = ContentScale.Crop,
                         alpha = if (isSelectionMode && !isSelected) 0.55f else 1f
                     )
@@ -143,7 +143,7 @@ fun LinkCard(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp),
-                        shape = RoundedCornerShape(6.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         color = Color(0xFFFF4081).copy(alpha = 0.92f)
                     ) {
                         Icon(
@@ -161,7 +161,7 @@ fun LinkCard(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(8.dp),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = MaterialTheme.shapes.medium,
                         color = if (isSelected) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                     ) {

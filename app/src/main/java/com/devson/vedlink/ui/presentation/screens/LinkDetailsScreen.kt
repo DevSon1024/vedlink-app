@@ -39,6 +39,12 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.devson.vedlink.ui.viewmodel.LinkDetailsViewModel
+import com.devson.vedlink.ui.viewmodel.SettingsViewModel
+import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,6 +60,7 @@ fun LinkDetailsScreen(
     linkId: Int,
     onNavigateBack: () -> Unit,
     viewModel: LinkDetailsViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     pageText: String? = null,
     onPreviousPage: (() -> Unit)? = null,
     onNextPage: (() -> Unit)? = null
@@ -61,6 +68,7 @@ fun LinkDetailsScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val uiState by viewModel.uiState.collectAsState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val scope = rememberCoroutineScope()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -70,10 +78,29 @@ fun LinkDetailsScreen(
         viewModel.loadLink(linkId)
     }
 
+    // Status bar color handling
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Link Details") },
+                title = {
+                    Text(
+                        text = "Link Details",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -106,7 +133,7 @@ fun LinkDetailsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -121,7 +148,7 @@ fun LinkDetailsScreen(
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                shape = RoundedCornerShape(32.dp),
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shadowElevation = 8.dp
             ) {
@@ -226,7 +253,8 @@ fun LinkDetailsScreen(
                     }
                 }
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
@@ -289,7 +317,7 @@ fun LinkDetailsScreen(
                                             }
                                         }
                                     ),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = MaterialTheme.shapes.extraSmall
                             ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
@@ -513,7 +541,7 @@ fun LinkDetailsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-                shape = RoundedCornerShape(16.dp)
+                shape = MaterialTheme.shapes.extraSmall
             ) {
                 Column {
                     Box(
@@ -529,7 +557,7 @@ fun LinkDetailsScreen(
                             contentDescription = "Full Image",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                                .clip(MaterialTheme.shapes.extraSmall),
                             contentScale = ContentScale.FillWidth
                         )
                     }

@@ -81,7 +81,7 @@ fun AppearanceSettingsScreen(
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.small,
             title = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -139,7 +139,7 @@ fun AppearanceSettingsScreen(
         val isMarathi = currentLocales.toLanguageTags().contains("mr")
         AlertDialog(
             onDismissRequest = { showLanguageDialog = false },
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.small,
             title = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -300,7 +300,7 @@ fun AppearanceSettingsScreen(
             //  INFO chip
             Surface(
                 modifier       = Modifier.fillMaxWidth(),
-                shape          = RoundedCornerShape(12.dp),
+                shape          = MaterialTheme.shapes.extraSmall,
                 color          = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
                 tonalElevation = 0.dp
             ) {
@@ -384,10 +384,10 @@ private fun PaletteCard(
 
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
+            .border(borderWidth, borderColor, MaterialTheme.shapes.extraSmall)
             .clickable(onClick = onClick),
-        shape          = RoundedCornerShape(14.dp),
+        shape          = MaterialTheme.shapes.extraSmall,
         color          = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = if (isSelected) 4.dp else 1.dp
     ) {
@@ -480,7 +480,7 @@ private fun ColorPreviewStrip() {
 
     Surface(
         modifier       = Modifier.fillMaxWidth(),
-        shape          = RoundedCornerShape(16.dp),
+        shape          = MaterialTheme.shapes.extraSmall,
         color          = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 2.dp
     ) {
