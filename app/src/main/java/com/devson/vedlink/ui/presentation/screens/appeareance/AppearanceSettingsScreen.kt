@@ -35,9 +35,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.os.LocaleListCompat
-import com.devson.vedlink.ui.presentation.theme.AppThemePalette
+import com.devson.vedlink.ui.presentation.components.SettingsCard
+import com.devson.vedlink.ui.presentation.components.SettingsDivider
+import com.devson.vedlink.ui.presentation.components.SettingsNavRow
+import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
+import com.devson.vedlink.ui.presentation.components.SettingsSwitchItem
 import com.devson.vedlink.ui.presentation.screens.settings.SettingsViewModel
+import com.devson.vedlink.ui.presentation.theme.AppThemePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +57,19 @@ fun AppearanceSettingsScreen(
     val selectedPalette by settingsViewModel.selectedPalette.collectAsState()
     val navBarTransparent by settingsViewModel.isNavBarTransparent.collectAsState()
     val isBackgroundBlurEnabled by settingsViewModel.isBackgroundBlurEnabled.collectAsState()
+
+    // Status bar color handling
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -200,19 +220,19 @@ fun AppearanceSettingsScreen(
             Spacer(Modifier.height(20.dp))
 
             //  COLOUR PALETTE section
-            AppearanceSectionLabel("Colour Palette")
+            SettingsSectionLabel("Colour Palette")
             PalettePickerGrid(
                 selected    = selectedPalette,
                 isDark      = isDark ?: false,
                 onSelect    = { settingsViewModel.setSelectedPalette(it) }
             )
-
-            Spacer(Modifier.height(16.dp))
-
+ 
+            Spacer(Modifier.height(24.dp))
+ 
             //  THEME section 
-            AppearanceSectionLabel("Theme")
-            AppearanceCard {
-                AppearanceNavRow(
+            SettingsSectionLabel("Theme")
+            SettingsCard {
+                SettingsNavRow(
                     icon     = when (isDark) {
                         true  -> Icons.Default.DarkMode
                         false -> Icons.Default.LightMode
@@ -226,10 +246,10 @@ fun AppearanceSettingsScreen(
                     },
                     onClick  = { showThemeDialog = true }
                 )
-
+ 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    AppearanceDivider()
-                    AppearanceToggleRow(
+                    SettingsDivider()
+                    SettingsSwitchItem(
                         icon      = Icons.Default.Palette,
                         title     = "Dynamic Colour",
                         subtitle  = "Use wallpaper colours (Android 12+)",
@@ -237,18 +257,18 @@ fun AppearanceSettingsScreen(
                         onCheckedChange = { settingsViewModel.setDynamicColor(it) }
                     )
                 }
-
-                AppearanceDivider()
-                AppearanceToggleRow(
+ 
+                SettingsDivider()
+                SettingsSwitchItem(
                     icon      = Icons.Default.WebAsset,
                     title     = "Transparent Navigation Bar",
                     subtitle  = "Content scrolls behind the system nav bar",
                     checked   = navBarTransparent,
                     onCheckedChange = { settingsViewModel.setNavBarTransparent(it) }
                 )
-
-                AppearanceDivider()
-                AppearanceToggleRow(
+ 
+                SettingsDivider()
+                SettingsSwitchItem(
                     icon      = Icons.Default.LensBlur,
                     title     = "Background Blur",
                     subtitle  = "Apply a blur effect to the navigation bar",
@@ -256,23 +276,23 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = { settingsViewModel.setBackgroundBlurEnabled(it) }
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-
+ 
+            Spacer(Modifier.height(24.dp))
+ 
             //  LANGUAGE section 
-            AppearanceSectionLabel("Language")
-            AppearanceCard {
+            SettingsSectionLabel("Language")
+            SettingsCard {
                 val currentLocales = AppCompatDelegate.getApplicationLocales()
                 val isMarathi = currentLocales.toLanguageTags().contains("mr")
-                AppearanceNavRow(
+                SettingsNavRow(
                     icon     = Icons.Default.Language,
                     title    = "Display Language",
                     subtitle = if (isMarathi) "मराठी" else "English",
                     onClick  = { showLanguageDialog = true }
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
+ 
+            Spacer(Modifier.height(24.dp))
 
             //  INFO chip
             Surface(
@@ -492,128 +512,6 @@ private fun ColorPreviewStrip() {
     }
 }
 
-@Composable
-private fun AppearanceSectionLabel(label: String) {
-    Text(
-        text       = label,
-        style      = MaterialTheme.typography.labelLarge,
-        color      = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.SemiBold,
-        modifier   = Modifier.padding(start = 4.dp, bottom = 6.dp)
-    )
-}
-
-@Composable
-private fun AppearanceCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier       = Modifier.fillMaxWidth(),
-        shape          = RoundedCornerShape(16.dp),
-        color          = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
-private fun AppearanceDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 56.dp),
-        color    = MaterialTheme.colorScheme.outlineVariant
-    )
-}
-
-@Composable
-private fun AppearanceNavRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier         = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = icon,
-                contentDescription = null,
-                modifier           = Modifier.size(20.dp),
-                tint               = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text  = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Icon(
-            imageVector        = Icons.Default.ChevronRight,
-            contentDescription = null,
-            modifier           = Modifier.size(18.dp),
-            tint               = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun AppearanceToggleRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier         = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = icon,
-                contentDescription = null,
-                modifier           = Modifier.size(20.dp),
-                tint               = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text  = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
 
 @Composable
 private fun ThemeOption(

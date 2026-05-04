@@ -14,13 +14,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,105 +76,132 @@ fun HomeScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 120.dp)
+                    .padding(horizontal = 20.dp)
             ) {
-                //  Greeting 
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
+                Spacer(modifier = Modifier.height(64.dp)) // Padding for status bar
+
+                // --- Greeting Section ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "$greeting 👋",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.5).sp
+                            ),
                             color = MaterialTheme.colorScheme.onBackground
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Here's your link collection at a glance",
+                            text = "Welcome to your VedLink dashboard",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
+                    }
+                    
+                    // Profile/User Icon Placeholder
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        tonalElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
-                //  Stats 
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // --- Stats Section ---
                 AnimatedVisibility(
                     visible = !uiState.isLoading && uiState.showStats,
-                    enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.9f),
-                    exit = fadeOut(tween(400)) + scaleOut(tween(400))
+                    enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { 20 },
+                    exit = fadeOut(tween(400))
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         StatCard(
                             modifier = Modifier.weight(1f),
-                            title = "Saved Links",
+                            title = "Total Links",
                             count = uiState.totalLinks,
-                            icon = Icons.Default.Bookmarks,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            icon = Icons.Default.Link,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            iconColor = MaterialTheme.colorScheme.primary,
+                            iconContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                         )
                         StatCard(
                             modifier = Modifier.weight(1f),
                             title = "Favorites",
                             count = uiState.totalFavorites,
                             icon = Icons.Default.Favorite,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            iconColor = Color(0xFFFF5252),
+                            iconContainerColor = Color(0xFFFF5252).copy(alpha = 0.1f)
                         )
                     }
                 }
 
-                if (uiState.showStats) Spacer(modifier = Modifier.height(24.dp))
+                if (uiState.showStats) Spacer(modifier = Modifier.height(32.dp))
 
-                //  Quick Actions 
+                // --- Quick Actions Section ---
                 AnimatedVisibility(
                     visible = uiState.showQuickActions,
-                    enter = fadeIn(tween(700)) + slideInHorizontally(tween(700)) { it / 2 },
-                    exit  = fadeOut(tween(400)) + slideOutHorizontally(tween(400)) { it / 2 }
+                    enter = fadeIn(tween(700)) + slideInVertically(tween(700)) { 20 },
+                    exit  = fadeOut(tween(400))
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    Column {
                         Text(
-                            text = "Quick Actions",
+                            text = "Explore",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             ActionCard(
                                 modifier = Modifier.weight(1f),
-                                icon = Icons.Default.Favorite,
-                                title = "Favorites",
-                                onClick = onNavigateToFavorites
-                            )
-                            ActionCard(
-                                modifier = Modifier.weight(1f),
-                                icon = Icons.Default.Folder,
+                                icon = Icons.Default.FolderOpen,
                                 title = "Folders",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 onClick = onNavigateToFolders
                             )
                             ActionCard(
                                 modifier = Modifier.weight(1f),
-                                icon = Icons.Default.Search,
+                                icon = Icons.Default.StarOutline,
+                                title = "Starred",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                onClick = onNavigateToFavorites
+                            )
+                            ActionCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.AutoMirrored.Filled.ManageSearch,
                                 title = "Search",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 onClick = onNavigateToSavedLinks
                             )
                         }
@@ -180,59 +210,45 @@ fun HomeScreen(
 
                 if (uiState.showQuickActions) Spacer(modifier = Modifier.height(32.dp))
 
-                //  Jump Back In 
+                // --- Jump Back In Section ---
                 AnimatedVisibility(
                     visible = uiState.showRecentLinks && uiState.recentLinks.isNotEmpty(),
-                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 },
-                    exit  = fadeOut(tween(400)) + slideOutVertically(tween(400)) { it / 2 }
+                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { 20 },
+                    exit  = fadeOut(tween(400))
                 ) {
                     Column {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.History,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            Text(
+                                text = "Recent Links",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            TextButton(onClick = onNavigateToSavedLinks) {
                                 Text(
-                                    text = "Jump Back In",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground
+                                    text = "See All",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
-                            Text(
-                                text = "See All",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .clickable { onNavigateToSavedLinks() }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-                        val cardWidth = screenWidth * 0.72f
+                        val cardWidth = screenWidth * 0.75f
 
                         val listState = rememberLazyListState()
                         LazyRow(
                             state = listState,
                             flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            contentPadding = PaddingValues(end = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.padding(horizontal = 0.dp)
                         ) {
                             items(uiState.recentLinks, key = { it.id }) { link ->
                                 JumpBackInCard(
@@ -244,27 +260,27 @@ fun HomeScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(120.dp)) // Extra space for FAB and navigation bar
             }
 
-            //  Animated FAB 
+            // --- Floating Action Button ---
             AnimatedVisibility(
                 visible = !showAddDialog,
-                enter = scaleIn(animationSpec = tween(durationMillis = 300)),
-                exit  = scaleOut(animationSpec = tween(durationMillis = 300)),
+                enter = scaleIn(animationSpec = tween(durationMillis = 400)) + fadeIn(),
+                exit  = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp)
+                    .padding(bottom = 32.dp)
             ) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier
+                        .size(64.dp)
+                        .shadow(12.dp, CircleShape),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 12.dp
-                    )
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
@@ -289,7 +305,102 @@ fun HomeScreen(
     }
 }
 
-//  Jump Back In Card 
+@Composable
+fun StatCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    count: Int,
+    icon: ImageVector,
+    containerColor: Color,
+    iconColor: Color,
+    iconContainerColor: Color
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = containerColor,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = CircleShape,
+                color = iconContainerColor
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 32.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    title: String,
+    containerColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        color = containerColor,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = title,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
 
 @Composable
 private fun JumpBackInCard(
@@ -303,12 +414,9 @@ private fun JumpBackInCard(
         onClick = onClick,
         modifier = Modifier
             .width(cardWidth.dp)
-            .height(210.dp),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            .height(200.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Full-bleed background image
@@ -316,7 +424,7 @@ private fun JumpBackInCard(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(link.imageUrl)
-                        .size(600, 420)
+                        .size(800, 600)
                         .scale(Scale.FILL)
                         .crossfade(true)
                         .memoryCachePolicy(CachePolicy.ENABLED)
@@ -327,7 +435,6 @@ private fun JumpBackInCard(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // Placeholder
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -342,163 +449,77 @@ private fun JumpBackInCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Language,
+                        imageVector = Icons.Outlined.Language,
                         contentDescription = null,
-                        modifier = Modifier.size(52.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
                 }
             }
 
-            // Gradient overlay — bottom 60%
+            // Glassmorphism-style overlay for text
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.65f)
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.85f)
+                                Color.Black.copy(alpha = 0.7f),
+                                Color.Black.copy(alpha = 0.9f)
                             )
                         )
                     )
-            )
-
-            // Favourite badge (top-start)
-            if (link.isFavorite) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFFF4081).copy(alpha = 0.92f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Favourite",
-                        modifier = Modifier.padding(4.dp).size(12.dp),
-                        tint = Color.White
-                    )
-                }
-            }
-
-            // Text at bottom
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .padding(16.dp)
             ) {
-                Text(
-                    text = link.title ?: "Untitled",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp
-                    ),
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        modifier = Modifier.size(11.dp),
-                        tint = Color.White.copy(alpha = 0.7f)
-                    )
+                Column {
                     Text(
-                        text = link.domain ?: "Unknown",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = Color.White.copy(alpha = 0.7f),
+                        text = link.title ?: "Untitled",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Link,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = link.domain ?: "Unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
-        }
-    }
-}
 
-//  Supporting composables 
-
-@Composable
-fun StatCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    count: Int,
-    icon: ImageVector,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = containerColor,
-        shadowElevation = 2.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(contentColor.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = contentColor)
+            // Favorite Badge
+            if (link.isFavorite) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Favorite",
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.padding(6.dp).size(16.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = contentColor
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = contentColor.copy(alpha = 0.8f)
-            )
-        }
-    }
-}
-
-@Composable
-fun ActionCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    title: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shadowElevation = 1.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

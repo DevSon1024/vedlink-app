@@ -1,44 +1,70 @@
 package com.devson.vedlink.ui.presentation.screens.settings
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import kotlinx.coroutines.launch
+import com.devson.vedlink.ui.presentation.components.SettingsCard
+import com.devson.vedlink.ui.presentation.components.SettingsDivider
+import com.devson.vedlink.ui.presentation.components.SettingsNavRow
+import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
+import com.devson.vedlink.ui.presentation.components.SettingsSwitchItem
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.material.icons.filled.Palette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToAppearance: () -> Unit = {},
-    onNavigateToCustomizeHome: () -> Unit = {}
+    onNavigateToCustomizeHome: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isNavBarTransparent by viewModel.isNavBarTransparent.collectAsState()
+    val isDark by viewModel.isDarkTheme.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Status bar color handling
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     // Calculate cache size on launch
     LaunchedEffect(Unit) {
@@ -72,260 +98,180 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text = "Settings",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 80.dp)
+                .padding(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding() + 16.dp
+                )
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // App Info Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
+            // App Info Card (Pixchive Style)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                tonalElevation = 0.dp
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
+                    Surface(
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "VedLink",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "Link Manager",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        tonalElevation = 4.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Link,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "VedLink",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Smart Link Manager • v1.0",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Customize UI Section
-            SettingsSection(title = "Customize UI")
+            SettingsSectionLabel("Customize UI")
+            SettingsCard {
+                SettingsNavRow(
+                    icon = Icons.Default.Home,
+                    title = "Customize Home",
+                    subtitle = "Toggle home page sections",
+                    onClick = onNavigateToCustomizeHome
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.Palette,
+                    title = "Appearance",
+                    subtitle = "Theme, colours & fonts",
+                    onClick = onNavigateToAppearance
+                )
+            }
 
-            SettingsItem(
-                icon = Icons.Default.Home,
-                title = "Customize Home",
-                subtitle = "Toggle home page sections",
-                onClick = onNavigateToCustomizeHome
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Palette,
-                title = "Appearance",
-                subtitle = "Customize theme and colors",
-                onClick = onNavigateToAppearance
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Storage Section
-            SettingsSection(title = "Storage")
+            SettingsSectionLabel("Storage")
+            SettingsCard {
+                SettingsNavRow(
+                    icon = Icons.Default.Folder,
+                    title = "Total Links",
+                    subtitle = "${uiState.totalLinks} links saved",
+                    onClick = {}
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.Image,
+                    title = "Image Cache",
+                    subtitle = uiState.cacheSize,
+                    onClick = { viewModel.calculateCacheSize(context) }
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.DeleteSweep,
+                    title = "Clear Cache",
+                    subtitle = "Free up storage space",
+                    onClick = { viewModel.clearCache(context) },
+                    iconColor = MaterialTheme.colorScheme.error,
+                    iconContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                )
+            }
 
-            SettingsItem(
-                icon = Icons.Default.Folder,
-                title = "Total Links",
-                subtitle = "${uiState.totalLinks} links saved",
-                onClick = {}
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Image,
-                title = "Image Cache",
-                subtitle = uiState.cacheSize,
-                onClick = {
-                    viewModel.calculateCacheSize(context)
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Default.DeleteSweep,
-                title = "Clear Cache",
-                subtitle = "Free up space by clearing app cache",
-                onClick = {
-                    viewModel.clearCache(context)
-                },
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Data Management Section
-            SettingsSection(title = "Data Management")
+            SettingsSectionLabel("Data Management")
+            SettingsCard {
+                SettingsSwitchItem(
+                    icon = Icons.Default.Cloud,
+                    title = "Auto Fetch Metadata",
+                    subtitle = "Automatically fetch link previews",
+                    checked = uiState.autoFetchMetadata,
+                    onCheckedChange = { viewModel.toggleAutoFetchMetadata() }
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.FileDownload,
+                    title = "Export Data",
+                    subtitle = "Backup links to JSON",
+                    onClick = {
+                        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                        exportLauncher.launch("vedlink_backup_$timeStamp.json")
+                    }
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.FileUpload,
+                    title = "Import Data",
+                    subtitle = "Restore links from backup",
+                    onClick = {
+                        importLauncher.launch(arrayOf("application/json"))
+                    }
+                )
+            }
 
-            SettingsSwitchItem(
-                icon = Icons.Default.Cloud,
-                title = "Auto Fetch Metadata",
-                subtitle = "Automatically fetch link previews",
-                checked = uiState.autoFetchMetadata,
-                onCheckedChange = { viewModel.toggleAutoFetchMetadata() }
-            )
-
-            SettingsItem(
-                icon = Icons.Default.FileDownload,
-                title = "Export Data",
-                subtitle = "Backup links to JSON",
-                onClick = {
-                    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                    exportLauncher.launch("vedlink_backup_$timeStamp.json")
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Default.FileUpload,
-                title = "Import Data",
-                subtitle = "Restore links from backup",
-                onClick = {
-                    importLauncher.launch(arrayOf("application/json"))
-                }
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             // About Section
-            SettingsSection(title = "About")
-
-            SettingsItem(
-                icon = Icons.Default.Info,
-                title = "About VedLink",
-                subtitle = "Version, Credits & More",
-                onClick = onNavigateToAbout
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-@Composable
-fun SettingsSection(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp)
-    )
-}
-
-@Composable
-fun SettingsItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = tint
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            SettingsSectionLabel("About")
+            SettingsCard {
+                SettingsNavRow(
+                    icon = Icons.Default.Info,
+                    title = "About VedLink",
+                    subtitle = "Version, Credits & More",
+                    onClick = onNavigateToAbout
                 )
             }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
 
-@Composable
-fun SettingsSwitchItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }

@@ -22,6 +22,14 @@ class CustomizeHomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CustomizeHomeUiState())
     val uiState: StateFlow<CustomizeHomeUiState> = _uiState.asStateFlow()
 
+    val isDarkTheme: StateFlow<Boolean?> = themePreferences.themeMode.map { mode ->
+        when (mode) {
+            1 -> false
+            2 -> true
+            else -> null
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+
     init {
         viewModelScope.launch {
             themePreferences.homeShowStats.collect { v ->

@@ -61,9 +61,7 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
                     Scaffold(

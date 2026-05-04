@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,18 +20,43 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.devson.vedlink.ui.presentation.components.SettingsCard
+import com.devson.vedlink.ui.presentation.components.SettingsDivider
+import com.devson.vedlink.ui.presentation.components.SettingsNavRow
+import com.devson.vedlink.ui.presentation.components.SettingsSectionLabel
+import com.devson.vedlink.ui.presentation.screens.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsState()
+
+    // Status bar color handling
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     // Get version info from context
     val versionName = try {
@@ -68,10 +94,11 @@ fun AboutScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -80,15 +107,14 @@ fun AboutScreen(
                 .verticalScroll(scrollState)
                 .padding(bottom = 16.dp)
         ) {
-            // App Info Header
-            Card(
+            // App Info Header (Pixchive Style)
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                tonalElevation = 0.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -96,154 +122,130 @@ fun AboutScreen(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
+                    Surface(
                         modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        tonalElevation = 4.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Link,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = "VedLink",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Link Manager & Downloader",
+                        text = "Smart Link Manager",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Version $versionName ($versionCode)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Version $versionName",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Repository Section
-            AboutSection(title = "Open Source")
+            SettingsSectionLabel("Open Source")
+            SettingsCard {
+                SettingsNavRow(
+                    icon = Icons.Default.Description,
+                    title = "README",
+                    subtitle = "View project documentation",
+                    onClick = {
+                        openUrl(context, "https://github.com/DevSon1024/vedlink-app/blob/main/README.md")
+                    }
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Default.NewReleases,
+                    title = "Latest Release",
+                    subtitle = "Check for updates",
+                    onClick = {
+                        openUrl(context, "https://github.com/DevSon1024/vedlink-app/releases/latest")
+                    }
+                )
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.AutoMirrored.Filled.Send,
+                    title = "Telegram Channel",
+                    subtitle = "Join our community",
+                    onClick = {
+                        openUrl(context, "https://t.me/vedlink_app")
+                    }
+                )
+            }
 
-            AboutItem(
-                icon = Icons.Default.Description,
-                title = "README",
-                subtitle = "View project documentation",
-                onClick = {
-                    openUrl(context, "https://github.com/DevSon1024/vedlink-app/blob/main/README.md")
-                }
-            )
-
-            AboutItem(
-                icon = Icons.Default.NewReleases,
-                title = "Latest Release",
-                subtitle = "Check for updates",
-                onClick = {
-                    openUrl(context, "https://github.com/DevSon1024/vedlink-app/releases/latest")
-                }
-            )
-
-            AboutItem(
-                icon = Icons.AutoMirrored.Filled.Send,
-                title = "Telegram Channel",
-                subtitle = "Join our community",
-                onClick = {
-                    openUrl(context, "https://t.me/vedlink_app")
-                }
-            )
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Legal Section
-            AboutSection(title = "Legal")
+            SettingsSectionLabel("Legal")
+            SettingsCard {
+                SettingsNavRow(
+                    icon = Icons.Default.Policy,
+                    title = "Privacy Policy",
+                    subtitle = "How we handle your data",
+                    onClick = {
+                        openUrl(context, "https://sites.google.com/view/vedlink-privacy-policy-page")
+                    }
+                )
+            }
 
-            AboutItem(
-                icon = Icons.Default.Policy,
-                title = "Privacy Policy",
-                subtitle = "How we handle your data",
-                onClick = {
-                    openUrl(context, "https://sites.google.com/view/vedlink-privacy-policy-page")
-                }
-            )
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Credits Section
-            AboutSection(title = "Credits")
+            SettingsSectionLabel("Credits")
+            SettingsCard {
+                CreditItem("Jetpack Compose", "Modern Android UI toolkit", "https://developer.android.com/jetpack/compose", context)
+                SettingsDivider()
+                CreditItem("Kotlin", "Programming language", "https://kotlinlang.org/", context)
+                SettingsDivider()
+                CreditItem("Material Design 3", "Design system", "https://m3.material.io/", context)
+                SettingsDivider()
+                CreditItem("Hilt", "Dependency injection", "https://dagger.dev/hilt/", context)
+                SettingsDivider()
+                CreditItem("Room Database", "Local data persistence", "https://developer.android.com/training/data-storage/room", context)
+                SettingsDivider()
+                CreditItem("OkHttp", "HTTP client", "https://square.github.io/okhttp/", context)
+                SettingsDivider()
+                CreditItem("Jsoup", "HTML parsing & web scraping", "https://jsoup.org/", context)
+                SettingsDivider()
+                CreditItem("Coil", "Image loading library", "https://coil-kt.github.io/coil/", context)
+                SettingsDivider()
+                CreditItem("Gson", "JSON serialization/deserialization", "https://github.com/google/gson", context)
+                SettingsDivider()
+                CreditItem("Kotlin Coroutines", "Asynchronous programming", "https://kotlinlang.org/docs/coroutines-overview.html", context)
+            }
 
-            CreditItem(
-                title = "Jetpack Compose",
-                subtitle = "Modern Android UI toolkit",
-                url = "https://developer.android.com/jetpack/compose",
-                context = context
-            )
-
-            CreditItem(
-                title = "Kotlin",
-                subtitle = "Programming language",
-                url = "https://kotlinlang.org/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Material Design 3",
-                subtitle = "Design system",
-                url = "https://m3.material.io/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Hilt",
-                subtitle = "Dependency injection",
-                url = "https://dagger.dev/hilt/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Room Database",
-                subtitle = "Local data persistence",
-                url = "https://developer.android.com/training/data-storage/room",
-                context = context
-            )
-
-            CreditItem(
-                title = "OkHttp",
-                subtitle = "HTTP client",
-                url = "https://square.github.io/okhttp/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Jsoup",
-                subtitle = "HTML parsing & web scraping",
-                url = "https://jsoup.org/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Coil",
-                subtitle = "Image loading library",
-                url = "https://coil-kt.github.io/coil/",
-                context = context
-            )
-
-            CreditItem(
-                title = "Gson",
-                subtitle = "JSON serialization/deserialization",
-                url = "https://github.com/google/gson",
-                context = context
-            )
-
-            CreditItem(
-                title = "Kotlin Coroutines",
-                subtitle = "Asynchronous programming",
-                url = "https://kotlinlang.org/docs/coroutines-overview.html",
-                context = context
-            )
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Device Info Section
-            AboutSection(title = "Device Information")
-
+            SettingsSectionLabel("Device Information")
             DeviceInfoCard(versionName = versionName, versionCode = versionCode)
 
             // Footer
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = "Made with ❤️ by DevSon1024",
                 style = MaterialTheme.typography.bodySmall,
@@ -253,7 +255,7 @@ fun AboutScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }
@@ -322,54 +324,45 @@ fun AboutItem(
 }
 
 @Composable
-fun CreditItem(
+private fun CreditItem(
     title: String,
     subtitle: String,
     url: String,
     context: Context
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { openUrl(context, url) },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
+            .clickable { openUrl(context, url) }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
     }
 }
 
@@ -379,26 +372,18 @@ fun DeviceInfoCard(versionName: String, versionCode: String) {
     val manufacturer = Build.MANUFACTURER ?: "Unknown"
     val model = Build.MODEL ?: "Unknown"
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    SettingsCard {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             DeviceInfoRow("App Version", "$versionName ($versionCode)")
-            Spacer(modifier = Modifier.height(8.dp))
+            SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
             DeviceInfoRow("Android Version", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            Spacer(modifier = Modifier.height(8.dp))
+            SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
             DeviceInfoRow("Device", "$manufacturer $model")
-            Spacer(modifier = Modifier.height(8.dp))
+            SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
             DeviceInfoRow("Supported ABIs", supportedAbis)
         }
     }

@@ -1,5 +1,6 @@
 package com.devson.vedlink.ui.presentation.screens.customizehome
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,10 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devson.vedlink.ui.presentation.screens.settings.SettingsSwitchItem
+import com.devson.vedlink.ui.presentation.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +27,20 @@ fun CustomizeHomeScreen(
     viewModel: CustomizeHomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isDark by viewModel.isDarkTheme.collectAsState()
+
+    // Status bar color handling
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val darkTheme = isDark ?: isSystemInDarkTheme()
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -43,96 +61,82 @@ fun CustomizeHomeScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 80.dp)
+                .padding(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding() + 16.dp
+                )
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Info card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+            // Info chip (Pixchive Style)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                tonalElevation = 0.dp
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(20.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "Toggle which sections show up on your Home screen.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        text = "Toggle which sections show up on your Home screen. Changes take effect immediately.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Section header
-            Text(
-                text = "Home Sections",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp)
-            )
+            SettingsSectionLabel("Home Sections")
+            
+            SettingsCard {
+                SettingsSwitchItem(
+                    icon = Icons.Default.BarChart,
+                    title = "Stats",
+                    subtitle = "Show total saved links and favourites",
+                    checked = uiState.showStats,
+                    onCheckedChange = { viewModel.toggleShowStats() }
+                )
+                SettingsDivider()
+                SettingsSwitchItem(
+                    icon = Icons.Default.Bolt,
+                    title = "Quick Actions",
+                    subtitle = "Show Favorites, Folders and Search shortcuts",
+                    checked = uiState.showQuickActions,
+                    onCheckedChange = { viewModel.toggleShowQuickActions() }
+                )
+                SettingsDivider()
+                SettingsSwitchItem(
+                    icon = Icons.Default.History,
+                    title = "Recently Saved",
+                    subtitle = "Show Jump Back In carousel of recent links",
+                    checked = uiState.showRecentLinks,
+                    onCheckedChange = { viewModel.toggleShowRecentLinks() }
+                )
+            }
 
-            SettingsSwitchItem(
-                icon = Icons.Default.BarChart,
-                title = "Stats",
-                subtitle = "Show total saved links and favourites",
-                checked = uiState.showStats,
-                onCheckedChange = { viewModel.toggleShowStats() }
-            )
-
-            SettingsSwitchItem(
-                icon = Icons.Default.Bolt,
-                title = "Quick Actions",
-                subtitle = "Show Favorites, Folders and Search shortcuts",
-                checked = uiState.showQuickActions,
-                onCheckedChange = { viewModel.toggleShowQuickActions() }
-            )
-
-            SettingsSwitchItem(
-                icon = Icons.Default.History,
-                title = "Recently Saved",
-                subtitle = "Show Jump Back In carousel of recent links",
-                checked = uiState.showRecentLinks,
-                onCheckedChange = { viewModel.toggleShowRecentLinks() }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Preview hint
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            )
-            Text(
-                text = "Changes take effect immediately on the Home screen.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
-            )
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }
