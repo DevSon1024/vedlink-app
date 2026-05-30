@@ -59,22 +59,7 @@ fun HomeScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by rememberSaveable { mutableStateOf(false) }
-
-    // Status bar color handling
-    val view = androidx.compose.ui.platform.LocalView.current
-    if (!view.isInEditMode) {
-        val backgroundColor = MaterialTheme.colorScheme.background
-        val darkTheme = isDark ?: androidx.compose.foundation.isSystemInDarkTheme()
-        SideEffect {
-            val window = (view.context as android.app.Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
-            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-        }
-    }
 
     val greeting = remember {
         val calendar = Calendar.getInstance()
@@ -315,45 +300,7 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(120.dp)) // Extra space for FAB and navigation bar
-            }
-
-            // --- Floating Action Button ---
-            AnimatedVisibility(
-                visible = !showAddDialog,
-                enter = scaleIn(animationSpec = tween(durationMillis = 400)) + fadeIn(),
-                exit  = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier
-                        .size(64.dp)
-                        .shadow(12.dp, CircleShape),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Add Link",
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-
-            if (showAddDialog) {
-                EnhancedAddLinkBottomSheet(
-                    recentLinks = uiState.recentLinks,
-                    onDismiss = { showAddDialog = false },
-                    onConfirm = { url, metadata ->
-                        viewModel.saveLink(url, metadata)
-                        showAddDialog = false
-                    },
-                    onAutoPaste = {}
-                )
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

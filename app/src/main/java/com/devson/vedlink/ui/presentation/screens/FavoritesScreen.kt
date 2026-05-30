@@ -41,33 +41,17 @@ import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 @Composable
 fun FavoritesScreen(
     onNavigateToDetails: (Int) -> Unit,
-    viewModel: FavoritesViewModel = hiltViewModel(),
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    viewModel: FavoritesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
-    // Status bar color handling
-    val view = androidx.compose.ui.platform.LocalView.current
-    if (!view.isInEditMode) {
-        val backgroundColor = MaterialTheme.colorScheme.background
-        val darkTheme = isDark ?: androidx.compose.foundation.isSystemInDarkTheme()
-        SideEffect {
-            val window = (view.context as android.app.Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
-            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-        }
-    }
 
     // Selection mode state
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
 
     // Event handling
     LaunchedEffect(Unit) {
@@ -210,7 +194,7 @@ fun FavoritesScreen(
                                     start = 16.dp,
                                     end = 16.dp,
                                     top = paddingValues.calculateTopPadding() + 8.dp,
-                                    bottom = paddingValues.calculateBottomPadding() + 100.dp
+                                    bottom = 80.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -266,7 +250,7 @@ fun FavoritesScreen(
                                     start = 16.dp,
                                     end = 16.dp,
                                     top = paddingValues.calculateTopPadding() + 8.dp,
-                                    bottom = paddingValues.calculateBottomPadding() + 100.dp
+                                    bottom = 80.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -316,33 +300,6 @@ fun FavoritesScreen(
                     }
                 }
                 
-                // Animated FAB
-                AnimatedVisibility(
-                    visible = !isSelectionMode && !showAddDialog,
-                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
-                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = paddingValues.calculateBottomPadding() + 48.dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = { showAddDialog = true },
-                        modifier = Modifier.size(64.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 8.dp,
-                            pressedElevation = 12.dp
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Add Link",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
             }
         }
 
@@ -364,18 +321,6 @@ fun FavoritesScreen(
                 showDeleteDialog = false
                 exitSelectionMode()
             }
-        )
-    }
-
-    if (showAddDialog) {
-        EnhancedAddLinkBottomSheet(
-            recentLinks = uiState.favoriteLinks.take(10),
-            onDismiss = { showAddDialog = false },
-            onConfirm = { url, metadata ->
-                viewModel.saveLink(url, metadata)
-                showAddDialog = false
-            },
-            onAutoPaste = {}
         )
     }
 }

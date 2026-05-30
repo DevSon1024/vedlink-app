@@ -140,9 +140,12 @@ fun EnhancedAddLinkBottomSheet(
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clipData = clipboard.primaryClip
                                 if (clipData != null && clipData.itemCount > 0) {
-                                    val pastedText = clipData.getItemAt(0).text.toString()
-                                    updateUrl(pastedText)
-                                    onAutoPaste()
+                                    val item = clipData.getItemAt(0)
+                                    val pastedText = item.text?.toString() ?: item.uri?.toString() ?: ""
+                                    if (pastedText.isNotBlank()) {
+                                        updateUrl(pastedText)
+                                        onAutoPaste()
+                                    }
                                 }
                             },
                             modifier = Modifier.size(48.dp),

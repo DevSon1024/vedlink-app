@@ -170,6 +170,7 @@ dependencies {
 
     // Android Link Preview for unified metadata fetching
     implementation("com.github.vishalkumarsinghvi:Android-Link-Preview:1.1")
+    implementation("org.jsoup:jsoup:1.18.1")
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")

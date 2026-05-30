@@ -48,13 +48,10 @@ import androidx.core.view.WindowCompat
 @Composable
 fun SavedLinksScreen(
     onNavigateToDetails: (linkId: Int, linkIds: List<Int>) -> Unit,
-    viewModel: SavedLinksViewModel = hiltViewModel(),
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SavedLinksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isDark by settingsViewModel.isDarkTheme.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showViewSettings by rememberSaveable { mutableStateOf(false) }
 
@@ -66,19 +63,6 @@ fun SavedLinksScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
-
-    // Status bar color handling
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        val backgroundColor = MaterialTheme.colorScheme.background
-        val darkTheme = isDark ?: isSystemInDarkTheme()
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-        }
-    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -232,7 +216,7 @@ fun SavedLinksScreen(
                                 columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
-                                    top = 8.dp, bottom = paddingValues.calculateBottomPadding() + 100.dp
+                                    top = 8.dp, bottom = 80.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 0.dp else 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 12.dp else 10.dp),
@@ -261,7 +245,7 @@ fun SavedLinksScreen(
                                 columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
-                                    top = 8.dp, bottom = paddingValues.calculateBottomPadding() + 100.dp
+                                    top = 8.dp, bottom = 80.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(
                                     if (uiState.gridCellsCount == 1) 0.dp else 10.dp
@@ -352,32 +336,6 @@ fun SavedLinksScreen(
                     }
                 }
 
-                // Animated FAB
-                AnimatedVisibility(
-                    visible = !uiState.isSearchActive && !isSelectionMode && !showAddDialog,
-                    enter = scaleIn(animationSpec = tween(durationMillis = 300)),
-                    exit = scaleOut(animationSpec = tween(durationMillis = 300)),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 100.dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = { showAddDialog = true },
-                        modifier = Modifier.size(64.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 8.dp, pressedElevation = 12.dp
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Add Link",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
             }
         }
     }
@@ -390,18 +348,6 @@ fun SavedLinksScreen(
             onGridCellsChange = { viewModel.setGridCellsCount(it) },
             onSortOrderChange = { viewModel.setSortOrder(it) },
             onDismiss = { showViewSettings = false }
-        )
-    }
-
-    if (showAddDialog) {
-        EnhancedAddLinkBottomSheet(
-            recentLinks = uiState.links.take(10),
-            onDismiss = { showAddDialog = false },
-            onConfirm = { url, metadata ->
-                viewModel.saveLink(url, metadata)
-                showAddDialog = false
-            },
-            onAutoPaste = {}
         )
     }
 
