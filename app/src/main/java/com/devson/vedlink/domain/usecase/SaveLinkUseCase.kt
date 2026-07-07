@@ -1,33 +1,44 @@
 package com.devson.vedlink.domain.usecase
 
-import android.net.Uri
 import android.util.Patterns
-import com.devson.vedlink.data.repository.LinkRepository
+import com.devson.vedlink.data.network.normalizer.UrlNormalizer
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.model.MetadataState
 import com.devson.vedlink.domain.model.SaveResult
 import com.devson.vedlink.domain.model.SaveStatus
+import com.devson.vedlink.domain.model.WebsiteProvider
+import com.devson.vedlink.domain.repository.LinkRepository
+import java.net.URI
 import javax.inject.Inject
 
 class SaveLinkUseCase @Inject constructor(
     private val repository: LinkRepository,
+    private val urlNormalizer: UrlNormalizer,
     private val workManagerHelper: WorkManagerHelper
 ) {
     suspend operator fun invoke(
-        url: String, 
+        url: String,
         checkDuplicate: Boolean = false,
         title: String? = null,
         description: String? = null,
-        imageUrl: String? = null
+        imageUrl: String? = null,
+        folderId: Int? = null,
+        tags: List<String> = emptyList()
     ): Result<SaveResult> {
         return try {
-            val cleanUrl = cleanUrl(url)
-
-            if (!isValidUrl(cleanUrl)) {
+            val trimmedUrl = url.trim()
+            if (!isValidUrl(trimmedUrl)) {
                 return Result.failure(IllegalArgumentException("Invalid URL format"))
             }
 
-            val existingLink = repository.getLinkByUrl(cleanUrl)
+            // Normalize URL to get canonical representation
+            val canonicalUrl = urlNormalizer.normalize(trimmedUrl)
+
+            // Duplicate detection check at both original and canonical levels
+            val existingLink = repository.getLinkByCanonicalUrl(canonicalUrl)
+                ?: repository.getLinkByUrl(trimmedUrl)
+
             if (existingLink != null) {
                 return Result.success(
                     SaveResult(
@@ -37,19 +48,32 @@ class SaveLinkUseCase @Inject constructor(
                 )
             }
 
-            val domain = extractDomain(cleanUrl)
+            val domain = extractDomain(canonicalUrl)
+            
+            // Build minimal link with QUEUED metadata state
             val link = Link(
-                url = cleanUrl,
+                url = trimmedUrl,
+                canonicalUrl = canonicalUrl,
                 title = title ?: domain,
                 description = description,
                 imageUrl = imageUrl,
-                domain = domain
+                faviconUrl = null,
+                domain = domain,
+                provider = WebsiteProvider.GENERIC, // Background worker will classify
+                folderId = folderId,
+                isFavorite = false,
+                isPinned = false,
+                isArchived = false,
+                isUnread = true,
+                metadataState = MetadataState.QUEUED,
+                tags = tags
             )
 
             val id = repository.insertLink(link)
 
             if (id > 0) {
-                workManagerHelper.enqueueMetadataFetch(cleanUrl, id.toInt())
+                // Enqueue WorkManager background task for metadata, favicon, and image extraction
+                workManagerHelper.enqueueMetadataFetch(trimmedUrl, id.toInt())
             }
 
             Result.success(
@@ -63,18 +87,10 @@ class SaveLinkUseCase @Inject constructor(
         }
     }
 
-    private fun cleanUrl(url: String): String {
-        var cleaned = url.trim()
-        if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
-            cleaned = "https://$cleaned"
-        }
-        return cleaned
-    }
-
     private fun extractDomain(url: String): String {
         return try {
-            val uri = Uri.parse(url)
-            uri.host?.replace("www.", "") ?: url
+            val uri = URI(url)
+            uri.host?.removePrefix("www.") ?: url
         } catch (e: Exception) {
             url
         }

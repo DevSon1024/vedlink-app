@@ -10,7 +10,7 @@ import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import com.devson.vedlink.domain.util.ScrapedMetadata
+import com.devson.vedlink.domain.model.ScrapedMetadata
 import javax.inject.Inject
 
 data class FavoritesUiState(

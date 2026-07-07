@@ -3,9 +3,12 @@ package com.devson.vedlink.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.model.Folder
+import com.devson.vedlink.domain.usecase.GetFoldersUseCase
 import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
 import com.devson.vedlink.domain.usecase.GetLinkByIdUseCase
 import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
+import com.devson.vedlink.domain.usecase.UpdateLinkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,8 +24,13 @@ data class LinkDetailsUiState(
 class LinkDetailsViewModel @Inject constructor(
     private val getLinkByIdUseCase: GetLinkByIdUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val deleteLinkUseCase: DeleteLinkUseCase
+    private val deleteLinkUseCase: DeleteLinkUseCase,
+    private val updateLinkUseCase: UpdateLinkUseCase,
+    getFoldersUseCase: GetFoldersUseCase
 ) : ViewModel() {
+
+    val folders: StateFlow<List<Folder>> = getFoldersUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _uiState = MutableStateFlow(LinkDetailsUiState())
     val uiState: StateFlow<LinkDetailsUiState> = _uiState.asStateFlow()
@@ -68,6 +76,59 @@ class LinkDetailsViewModel @Inject constructor(
         val currentLink = _uiState.value.link ?: return
         viewModelScope.launch {
             deleteLinkUseCase(currentLink)
+        }
+    }
+
+    fun updateNotes(notes: String) {
+        val currentLink = _uiState.value.link ?: return
+        val updated = currentLink.copy(
+            notes = notes,
+            notesUpdatedAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
+        }
+    }
+
+    fun assignFolder(folderId: Int?) {
+        val currentLink = _uiState.value.link ?: return
+        val updated = currentLink.copy(
+            folderId = folderId,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
+        }
+    }
+
+    fun addTag(tag: String) {
+        val currentLink = _uiState.value.link ?: return
+        val cleanTag = tag.trim().lowercase()
+        if (cleanTag.isBlank() || currentLink.tags.contains(cleanTag)) return
+        val updatedTags = currentLink.tags + cleanTag
+        val updated = currentLink.copy(
+            tags = updatedTags,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
+        }
+    }
+
+    fun removeTag(tag: String) {
+        val currentLink = _uiState.value.link ?: return
+        val updatedTags = currentLink.tags - tag
+        val updated = currentLink.copy(
+            tags = updatedTags,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
         }
     }
 }

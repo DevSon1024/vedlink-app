@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -99,6 +100,15 @@ fun LinkCard(
                         contentScale = ContentScale.Crop,
                         alpha = if (isSelectionMode && !isSelected) 0.55f else 1f
                     )
+                } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
+                    link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
+                    link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                            .shimmerEffect()
+                    )
                 } else {
                     // Gradient placeholder
                     Box(
@@ -115,12 +125,26 @@ fun LinkCard(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        )
+                        if (!link.faviconUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(link.faviconUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                            )
+                        }
                     }
                 }
 
@@ -211,12 +235,35 @@ fun LinkCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(11.dp),
-                            tint = Color.White.copy(alpha = 0.75f)
-                        )
+                        if (!link.faviconUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(link.faviconUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
+                            link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
+                            link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .shimmerEffect()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                modifier = Modifier.size(11.dp),
+                                tint = Color.White.copy(alpha = 0.75f)
+                            )
+                        }
                         Text(
                             text = link.domain ?: "Unknown",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),

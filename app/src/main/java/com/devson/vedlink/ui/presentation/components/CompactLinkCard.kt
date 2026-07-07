@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -94,6 +95,14 @@ fun CompactLinkCard(
                     contentScale = ContentScale.Crop,
                     alpha = if (isSelectionMode && !isSelected) 0.6f else 1f
                 )
+            } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
+                link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
+                link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .shimmerEffect()
+                )
             } else {
                 Box(
                     modifier = Modifier
@@ -108,12 +117,26 @@ fun CompactLinkCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                    )
+                    if (!link.faviconUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(link.faviconUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                        )
+                    }
                 }
             }
 
@@ -201,12 +224,35 @@ fun CompactLinkCard(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        modifier = Modifier.size(10.dp),
-                        tint = Color.White.copy(alpha = 0.75f)
-                    )
+                    if (!link.faviconUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(link.faviconUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(11.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
+                        link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
+                        link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
+                        Box(
+                            modifier = Modifier
+                                .size(11.dp)
+                                .clip(CircleShape)
+                                .shimmerEffect()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = link.domain ?: "Unknown",

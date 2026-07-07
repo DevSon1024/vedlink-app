@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.annotation.ExperimentalCoilApi
 import com.devson.vedlink.data.preferences.ThemePreferences
-import com.devson.vedlink.data.repository.LinkRepository
+import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.model.Link
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel

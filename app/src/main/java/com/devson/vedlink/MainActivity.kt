@@ -24,7 +24,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devson.vedlink.data.preferences.ThemePreferences
-import com.devson.vedlink.data.repository.LinkRepository
+import com.devson.vedlink.data.network.scraper.MetadataPipeline
+import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.navigation.NavGraph
@@ -54,6 +55,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var saveLinkUseCase: SaveLinkUseCase
+
+    @Inject
+    lateinit var metadataPipeline: MetadataPipeline
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -233,7 +237,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onAutoPaste = {}
+                            onAutoPaste = {},
+                            onFetchPreview = { url ->
+                                try {
+                                    metadataPipeline.resolveMetadata(url)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
                         )
                     }
                 }

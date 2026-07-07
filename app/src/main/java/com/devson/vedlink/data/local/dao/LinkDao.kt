@@ -16,20 +16,32 @@ interface LinkDao {
     @Query("SELECT * FROM links WHERE url = :url LIMIT 1")
     suspend fun getLinkByUrl(url: String): LinkEntity?
 
+    @Query("SELECT * FROM links WHERE canonicalUrl = :canonicalUrl LIMIT 1")
+    suspend fun getLinkByCanonicalUrl(canonicalUrl: String): LinkEntity?
+
     @Query("SELECT * FROM links WHERE isFavorite = 1 ORDER BY createdAt DESC")
     fun getFavoriteLinks(): Flow<List<LinkEntity>>
 
     @Query("SELECT * FROM links WHERE folderId = :folderId ORDER BY createdAt DESC")
     fun getLinksByFolder(folderId: Int): Flow<List<LinkEntity>>
 
-    @Query("SELECT * FROM links WHERE title LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE folderId IS NULL ORDER BY createdAt DESC")
+    fun getRootLinks(): Flow<List<LinkEntity>>
+
+    @Query("SELECT * FROM links WHERE tags LIKE '%' || :tag || '%' ORDER BY createdAt DESC")
+    fun getLinksByTag(tag: String): Flow<List<LinkEntity>>
+
+    @Query("SELECT tags FROM links WHERE tags IS NOT NULL")
+    fun getAllTagsRaw(): Flow<List<String>>
+
+    @Query("SELECT * FROM links WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR domain LIKE '%' || :query || '%' ORDER BY createdAt DESC")
     fun searchLinks(query: String): Flow<List<LinkEntity>>
+
+    @Query("UPDATE links SET metadataState = :state WHERE id = :id")
+    suspend fun updateMetadataState(id: Int, state: String)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLink(link: LinkEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertLinks(links: List<LinkEntity>)
 
     @Update
     suspend fun updateLink(link: LinkEntity)

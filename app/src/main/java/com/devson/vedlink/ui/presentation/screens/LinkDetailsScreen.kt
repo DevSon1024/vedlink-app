@@ -476,6 +476,194 @@ fun LinkDetailsScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        // --- Folder selector ---
+                        SectionHeader("Folder Collection")
+                        val allFolders by viewModel.folders.collectAsState()
+                        var folderMenuExpanded by remember { mutableStateOf(false) }
+                        val currentFolder = allFolders.find { it.id == link.folderId }
+                        val folderText = currentFolder?.name ?: "Assign to Folder (None)"
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { folderMenuExpanded = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(folderText, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = folderMenuExpanded,
+                                onDismissRequest = { folderMenuExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.9f)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("None") },
+                                    onClick = {
+                                        viewModel.assignFolder(null)
+                                        folderMenuExpanded = false
+                                    }
+                                )
+                                allFolders.forEach { folder ->
+                                    DropdownMenuItem(
+                                        text = { Text(folder.name) },
+                                        onClick = {
+                                            viewModel.assignFolder(folder.id)
+                                            folderMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // --- Tags Section ---
+                        SectionHeader("Tags")
+                        var showAddTagDialog by remember { mutableStateOf(false) }
+                        var newTagName by remember { mutableStateOf("") }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                link.tags.forEach { tag ->
+                                    InputChip(
+                                        selected = true,
+                                        onClick = {},
+                                        label = { Text(tag) },
+                                        trailingIcon = {
+                                            IconButton(
+                                                onClick = { viewModel.removeTag(tag) },
+                                                modifier = Modifier.size(16.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Remove tag",
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                                AssistChip(
+                                    onClick = { showAddTagDialog = true },
+                                    label = { Text("Add Tag") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        if (showAddTagDialog) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    showAddTagDialog = false
+                                    newTagName = ""
+                                },
+                                title = { Text("Add Tag") },
+                                text = {
+                                    OutlinedTextField(
+                                        value = newTagName,
+                                        onValueChange = { newTagName = it },
+                                        label = { Text("Tag Name") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            if (newTagName.isNotBlank()) {
+                                                viewModel.addTag(newTagName.trim())
+                                                showAddTagDialog = false
+                                                newTagName = ""
+                                            }
+                                        }
+                                    ) {
+                                        Text("Add")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        showAddTagDialog = false
+                                        newTagName = ""
+                                    }) {
+                                        Text("Cancel")
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // --- Notes Editor ---
+                        SectionHeader("Notes")
+                        var notesText by remember(link.notes) { mutableStateOf(link.notes ?: "") }
+
+                        LaunchedEffect(notesText) {
+                            if (notesText != (link.notes ?: "")) {
+                                kotlinx.coroutines.delay(800)
+                                viewModel.updateNotes(notesText)
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = notesText,
+                            onValueChange = { notesText = it },
+                            placeholder = { Text("Add personal notes or markdown comments here...") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .heightIn(min = 120.dp, max = 300.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         // Metadata
                         SectionHeader("Metadata")
                         Card(

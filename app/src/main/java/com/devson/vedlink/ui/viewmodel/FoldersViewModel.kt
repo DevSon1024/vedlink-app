@@ -2,16 +2,14 @@ package com.devson.vedlink.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devson.vedlink.data.preferences.ThemePreferences
+import com.devson.vedlink.domain.model.Folder
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.domain.usecase.GetAllLinksUseCase
-import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
-import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
-import com.devson.vedlink.domain.usecase.SaveLinkUseCase
+import com.devson.vedlink.domain.model.ScrapedMetadata
+import com.devson.vedlink.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import com.devson.vedlink.data.preferences.ThemePreferences
-import com.devson.vedlink.domain.util.ScrapedMetadata
 import javax.inject.Inject
 
 data class FolderItem(
@@ -21,8 +19,10 @@ data class FolderItem(
 )
 
 data class FoldersUiState(
-    val folders: List<FolderItem> = emptyList(),
+    val folders: List<FolderItem> = emptyList(), // Dynamic Domain folders
+    val customFolders: List<Folder> = emptyList(), // Custom DB folders
     val linksByDomain: Map<String, List<Link>> = emptyMap(),
+    val linksByFolderId: Map<Int?, List<Link>> = emptyMap(),
     val isLoading: Boolean = false,
     val gridCellsCount: Int = 2,
     val sortOrder: String = "ASC",
@@ -41,6 +41,10 @@ class FoldersViewModel @Inject constructor(
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deleteLinkUseCase: DeleteLinkUseCase,
     private val saveLinkUseCase: SaveLinkUseCase,
+    private val getFoldersUseCase: GetFoldersUseCase,
+    private val createFolderUseCase: CreateFolderUseCase,
+    private val updateFolderUseCase: UpdateFolderUseCase,
+    private val deleteFolderUseCase: DeleteFolderUseCase,
     private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
@@ -52,14 +56,13 @@ class FoldersViewModel @Inject constructor(
 
     init {
         loadPreferences()
-        loadFolders()
+        loadFoldersAndLinks()
     }
 
     private fun loadPreferences() {
         viewModelScope.launch {
             themePreferences.folderGridCellsCount.collect { count ->
                 _uiState.update { it.copy(gridCellsCount = count) }
-                // Delay setting isPrefsLoaded until we have both, or just set it here since they're fast
                 if (!_uiState.value.isPrefsLoaded) {
                     _uiState.update { it.copy(isPrefsLoaded = true) }
                 }
@@ -100,52 +103,53 @@ class FoldersViewModel @Inject constructor(
         }
     }
 
-    private fun loadFolders() {
+    private fun loadFoldersAndLinks() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            getAllLinksUseCase()
-                .catch { exception ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = exception.message ?: "Failed to load folders"
-                        )
-                    }
-                    _uiEvent.emit(
-                        FoldersUiEvent.ShowError(
-                            exception.message ?: "Failed to load folders"
-                        )
+            // Combine links and folders streams
+            combine(getAllLinksUseCase(), getFoldersUseCase()) { links, dbFolders ->
+                val linksByDomain = links.groupBy { link ->
+                    mapToReadableDomain(link.domain ?: "Unknown")
+                }
+
+                var domainFolders = linksByDomain.map { (domain, domainLinks) ->
+                    FolderItem(
+                        domain = domain,
+                        linkCount = domainLinks.size
                     )
                 }
-                .collect { links ->
-                    // Map domains to readable names BEFORE grouping
-                    val linksByDomain = links.groupBy { link ->
-                        mapToReadableDomain(link.domain ?: "Unknown")
-                    }
 
-                    var folders = linksByDomain.map { (domain, domainLinks) ->
-                        FolderItem(
-                            domain = domain,
-                            linkCount = domainLinks.size
-                        )
-                    }
-                    
-                    folders = if (_uiState.value.sortOrder == "ASC") {
-                        folders.sortedBy { it.domain.lowercase() }
-                    } else {
-                        folders.sortedByDescending { it.domain.lowercase() }
-                    }
-
-                    _uiState.update {
-                        it.copy(
-                            folders = folders,
-                            linksByDomain = linksByDomain,
-                            isLoading = false,
-                            error = null
-                        )
-                    }
+                domainFolders = if (_uiState.value.sortOrder == "ASC") {
+                    domainFolders.sortedBy { it.domain.lowercase() }
+                } else {
+                    domainFolders.sortedByDescending { it.domain.lowercase() }
                 }
+
+                val linksByFolderId = links.groupBy { it.folderId }
+
+                Triple(domainFolders, linksByDomain, dbFolders to linksByFolderId)
+            }.catch { exception ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Failed to load folders"
+                    )
+                }
+                _uiEvent.emit(FoldersUiEvent.ShowError(exception.message ?: "Failed to load folders"))
+            }.collect { (domainFolders, linksByDomain, pair) ->
+                val (dbFolders, linksByFolderId) = pair
+                _uiState.update {
+                    it.copy(
+                        folders = domainFolders,
+                        linksByDomain = linksByDomain,
+                        customFolders = dbFolders,
+                        linksByFolderId = linksByFolderId,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+            }
         }
     }
 
@@ -167,24 +171,14 @@ class FoldersViewModel @Inject constructor(
         }
     }
 
-
     fun toggleFavorite(linkId: Int, currentFavoriteStatus: Boolean) {
         viewModelScope.launch {
             try {
                 toggleFavoriteUseCase(linkId, currentFavoriteStatus)
-
-                val message = if (!currentFavoriteStatus) {
-                    "Added to favorites"
-                } else {
-                    "Removed from favorites"
-                }
+                val message = if (!currentFavoriteStatus) "Added to favorites" else "Removed from favorites"
                 _uiEvent.emit(FoldersUiEvent.ShowSuccess(message))
             } catch (e: Exception) {
-                _uiEvent.emit(
-                    FoldersUiEvent.ShowError(
-                        e.message ?: "Failed to update favorite"
-                    )
-                )
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to update favorite"))
             }
         }
     }
@@ -194,15 +188,10 @@ class FoldersViewModel @Inject constructor(
             try {
                 val allLinks = _uiState.value.linksByDomain.values.flatten()
                 val selectedLinksData = allLinks.filter { it.id in linkIds }
-
-                // Determine new favorite status - if any is not favorite, make all favorite
                 val shouldBeFavorite = selectedLinksData.any { !it.isFavorite }
 
                 linkIds.forEach { linkId ->
-                    val link = allLinks.find { it.id == linkId }
-                    link?.let {
-                        toggleFavoriteUseCase(linkId, !shouldBeFavorite)
-                    }
+                    toggleFavoriteUseCase(linkId, !shouldBeFavorite)
                 }
 
                 val message = if (shouldBeFavorite) {
@@ -212,11 +201,7 @@ class FoldersViewModel @Inject constructor(
                 }
                 _uiEvent.emit(FoldersUiEvent.ShowSuccess(message))
             } catch (e: Exception) {
-                _uiEvent.emit(
-                    FoldersUiEvent.ShowError(
-                        e.message ?: "Failed to update favorites"
-                    )
-                )
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to update favorites"))
             }
         }
     }
@@ -227,11 +212,7 @@ class FoldersViewModel @Inject constructor(
                 deleteLinkUseCase(link)
                 _uiEvent.emit(FoldersUiEvent.ShowSuccess("Link deleted successfully"))
             } catch (e: Exception) {
-                _uiEvent.emit(
-                    FoldersUiEvent.ShowError(
-                        e.message ?: "Failed to delete link"
-                    )
-                )
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to delete link"))
             }
         }
     }
@@ -246,23 +227,45 @@ class FoldersViewModel @Inject constructor(
                     deleteLinkUseCase(link)
                 }
 
-                _uiEvent.emit(
-                    FoldersUiEvent.ShowSuccess(
-                        "${linkIds.size} link(s) deleted successfully"
-                    )
-                )
+                _uiEvent.emit(FoldersUiEvent.ShowSuccess("${linkIds.size} link(s) deleted successfully"))
             } catch (e: Exception) {
-                _uiEvent.emit(
-                    FoldersUiEvent.ShowError(
-                        e.message ?: "Failed to delete links"
-                    )
-                )
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to delete links"))
             }
         }
     }
 
-    fun refreshFolders() {
-        loadFolders()
+    // Custom folder CRUD
+    fun createFolder(name: String, parentId: Int? = null) {
+        viewModelScope.launch {
+            try {
+                createFolderUseCase(name, parentId)
+                _uiEvent.emit(FoldersUiEvent.ShowSuccess("Folder created"))
+            } catch (e: Exception) {
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to create folder"))
+            }
+        }
+    }
+
+    fun updateFolder(folder: Folder) {
+        viewModelScope.launch {
+            try {
+                updateFolderUseCase(folder)
+                _uiEvent.emit(FoldersUiEvent.ShowSuccess("Folder updated"))
+            } catch (e: Exception) {
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to update folder"))
+            }
+        }
+    }
+
+    fun deleteFolder(folder: Folder) {
+        viewModelScope.launch {
+            try {
+                deleteFolderUseCase(folder)
+                _uiEvent.emit(FoldersUiEvent.ShowSuccess("Folder deleted"))
+            } catch (e: Exception) {
+                _uiEvent.emit(FoldersUiEvent.ShowError(e.message ?: "Failed to delete folder"))
+            }
+        }
     }
 
     fun saveLink(url: String, metadata: ScrapedMetadata? = null) {

@@ -5,28 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.model.ScrapedMetadata
 import com.devson.vedlink.domain.usecase.*
-import com.devson.vedlink.domain.util.ScrapedMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class SavedLinksUiState(
-    val links: List<Link> = emptyList(),
-    val isLoading: Boolean = false,
-    val isSearchActive: Boolean = false,
-    val searchQuery: String = "",
-    val gridCellsCount: Int = 1,
-    val sortOrder: String = "DESC",  // "DESC" = Latest first, "ASC" = Oldest first
-    val isPrefsLoaded: Boolean = false
-)
-
-sealed class SavedLinksUiEvent {
-    data class ShowError(val message: String) : SavedLinksUiEvent()
-    data class ShowSuccess(val message: String) : SavedLinksUiEvent()
-}
 
 @HiltViewModel
 class SavedLinksViewModel @Inject constructor(
@@ -48,7 +33,6 @@ class SavedLinksViewModel @Inject constructor(
     @OptIn(FlowPreview::class)
     private val rawSearchQuery = MutableStateFlow("")
 
-    // Internal flow for raw links (before sorting)
     private val _rawLinks = MutableStateFlow<List<Link>>(emptyList())
 
     init {
@@ -58,7 +42,6 @@ class SavedLinksViewModel @Inject constructor(
         observeSortedLinks()
     }
 
-    /** Observe raw links + sortOrder together so the list re-sorts whenever either changes. */
     private fun observeSortedLinks() {
         viewModelScope.launch {
             combine(_rawLinks, themePreferences.sortOrder) { raw, order ->
@@ -229,7 +212,6 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
-    /** Update grid columns count (1–6) and persist to DataStore. */
     fun setGridCellsCount(count: Int) {
         viewModelScope.launch {
             _uiState.update { it.copy(gridCellsCount = count.coerceIn(1, 6)) }
@@ -237,7 +219,6 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
-    /** Update sort order ("DESC" or "ASC") and persist to DataStore. */
     fun setSortOrder(order: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(sortOrder = order) }
@@ -248,7 +229,6 @@ class SavedLinksViewModel @Inject constructor(
     fun refreshMetadata() {
         viewModelScope.launch {
             _uiState.value.links.forEach { link ->
-                // User explicitly requested refresh → bypass cache
                 workManagerHelper.enqueueMetadataFetch(link.url, link.id, isForcedRefresh = true)
             }
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing metadata..."))
@@ -257,7 +237,6 @@ class SavedLinksViewModel @Inject constructor(
 
     fun refreshLink(linkId: Int) {
         viewModelScope.launch {
-            // User explicitly requested refresh → bypass cache
             val link = _uiState.value.links.find { it.id == linkId }
             link?.let {
                 workManagerHelper.enqueueMetadataFetch(it.url, it.id, isForcedRefresh = true)
@@ -265,4 +244,19 @@ class SavedLinksViewModel @Inject constructor(
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing link..."))
         }
     }
+}
+
+data class SavedLinksUiState(
+    val links: List<Link> = emptyList(),
+    val isLoading: Boolean = false,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
+    val gridCellsCount: Int = 1,
+    val sortOrder: String = "DESC",
+    val isPrefsLoaded: Boolean = false
+)
+
+sealed class SavedLinksUiEvent {
+    data class ShowError(val message: String) : SavedLinksUiEvent()
+    data class ShowSuccess(val message: String) : SavedLinksUiEvent()
 }

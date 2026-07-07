@@ -30,7 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.domain.util.ScrapedMetadata
+import com.devson.vedlink.domain.model.ScrapedMetadata
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.Brush
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import com.devson.vedlink.domain.util.MetadataScraperUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +49,7 @@ fun EnhancedAddLinkBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (String, ScrapedMetadata?) -> Unit,
     onAutoPaste: () -> Unit,
+    onFetchPreview: suspend (String) -> ScrapedMetadata?,
     urlInputValue: String = "",
     onUrlChange: (String) -> Unit = {}
 ) {
@@ -76,7 +76,7 @@ fun EnhancedAddLinkBottomSheet(
             isPreviewLoading = true
             previewMetadata = null
             previewMetadata = withContext(Dispatchers.IO) {
-                MetadataScraperUtil.fetchMetadata(localUrl)
+                onFetchPreview(localUrl)
             }
             isPreviewLoading = false
         } else {
