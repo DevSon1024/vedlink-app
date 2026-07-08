@@ -55,10 +55,15 @@ fun CompactLinkCard(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.85f)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -75,154 +80,117 @@ fun CompactLinkCard(
             ),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            //  Background: image or placeholder 
-            if (!link.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(link.imageUrl)
-                        .size(400, 400)
-                        .scale(Scale.FILL)
-                        .crossfade(true)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .networkCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = link.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = if (isSelectionMode && !isSelected) 0.6f else 1f
-                )
-            } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
-                link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
-                link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .shimmerEffect()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!link.faviconUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(link.faviconUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        )
-                    }
-                }
-            }
-
-            //  Bottom gradient overlay 
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top portion: Image or Placeholder
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.6f)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f))
-                        )
+                    .aspectRatio(1.6f)
+            ) {
+                if (!link.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(link.imageUrl)
+                            .size(400, 250)
+                            .scale(Scale.FILL)
+                            .crossfade(true)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = link.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = if (isSelectionMode && !isSelected) 0.6f else 1f
                     )
-            )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                        )
+                    }
+                }
 
-            //  Top-Left: Favourite badge 
-            if (!isSelectionMode && link.isFavorite) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = Color(0xFFFF4081).copy(alpha = 0.92f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = "Favourite",
-                        modifier = Modifier.padding(4.dp).size(10.dp),
-                        tint = Color.White
+                // If loading metadata, show loading state
+                if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
+                    link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
+                    link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .shimmerEffect()
                     )
                 }
-            }
 
-            //  Top-Right: Selection checkbox 
-            if (isSelectionMode) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                ) {
-                    Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                // Top-left: Favourite badge (if not in selection mode and is favorite)
+                if (!isSelectionMode && link.isFavorite) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        color = Color(0xFFFF4081).copy(alpha = 0.9f)
+                    ) {
                         Icon(
-                            imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-                            contentDescription = if (isSelected) "Selected" else "Not selected",
-                            modifier = Modifier.size(18.dp),
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Favourite",
+                            modifier = Modifier.padding(4.dp).size(10.dp),
+                            tint = Color.White
                         )
+                    }
+                }
+
+                // Top-right: Selection checkbox
+                if (isSelectionMode) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                    ) {
+                        Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                                contentDescription = if (isSelected) "Selected" else "Not selected",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
 
-            //  Selection dim overlay 
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
-                )
-            }
-
-            //  Bottom Left: Title & Domain text 
+            // Bottom portion: Metadata and text
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(end = 36.dp) // Leave space for the 3-dot menu
-                    .padding(start = 8.dp, bottom = 8.dp, top = 8.dp)
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = link.title ?: "Untitled Link",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 16.sp
-                    ),
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
+                // Favicon & Domain Row
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (!link.faviconUrl.isNullOrBlank()) {
                         AsyncImage(
@@ -232,69 +200,110 @@ fun CompactLinkCard(
                                 .build(),
                             contentDescription = null,
                             modifier = Modifier
-                                .size(11.dp)
+                                .size(12.dp)
                                 .clip(CircleShape),
                             contentScale = ContentScale.Fit
-                        )
-                    } else if (link.metadataState == com.devson.vedlink.domain.model.MetadataState.QUEUED ||
-                        link.metadataState == com.devson.vedlink.domain.model.MetadataState.FETCHING ||
-                        link.metadataState == com.devson.vedlink.domain.model.MetadataState.PROCESSING) {
-                        Box(
-                            modifier = Modifier
-                                .size(11.dp)
-                                .clip(CircleShape)
-                                .shimmerEffect()
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Language,
                             contentDescription = null,
-                            modifier = Modifier.size(10.dp),
-                            tint = Color.White.copy(alpha = 0.75f)
+                            modifier = Modifier.size(11.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = link.domain ?: "Unknown",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = Color.White.copy(alpha = 0.75f),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Title
+                Text(
+                    text = link.title ?: "Untitled Link",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Brief Snippet/Description
+                if (!link.description.isNullOrBlank()) {
+                    Text(
+                        text = link.description,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 10.sp,
+                            lineHeight = 13.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
 
-            //  Bottom Right: Action Menu 
-            if (!isSelectionMode) {
-                Box(
-                    modifier = Modifier.align(Alignment.BottomEnd)
-                ) {
-                    IconButton(
-                        onClick = { showMenu = true },
-                        modifier = Modifier.size(36.dp)
+                // Favorite and Options Actions at the bottom
+                if (!isSelectionMode) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            modifier = Modifier.size(18.dp),
-                            tint = Color.White
-                        )
-                    }
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onFavoriteClick()
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (link.isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Toggle favourite",
+                                modifier = Modifier.size(15.dp),
+                                tint = if (link.isFavorite) Color(0xFFFF4081) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                    LinkOptionsMenu(
-                        expanded = showMenu,
-                        onDismiss = { showMenu = false },
-                        isFavorite = link.isFavorite,
-                        onFavoriteClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onFavoriteClick()
-                            showMenu = false
-                        },
-                        onCopyClick = { onCopyClick(); showMenu = false },
-                        onShareClick = { onShareClick(); showMenu = false },
-                        onRefreshClick = { onRefreshClick(); showMenu = false },
-                        onDeleteClick = { onDeleteClick(); showMenu = false }
-                    )
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            LinkOptionsMenu(
+                                expanded = showMenu,
+                                onDismiss = { showMenu = false },
+                                isFavorite = link.isFavorite,
+                                onFavoriteClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onFavoriteClick()
+                                    showMenu = false
+                                },
+                                onCopyClick = { onCopyClick(); showMenu = false },
+                                onShareClick = { onShareClick(); showMenu = false },
+                                onRefreshClick = { onRefreshClick(); showMenu = false },
+                                onDeleteClick = { onDeleteClick(); showMenu = false }
+                            )
+                        }
+                    }
                 }
             }
         }

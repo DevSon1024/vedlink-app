@@ -1,6 +1,8 @@
 package com.devson.vedlink.ui.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,7 +26,57 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Home.route,
+        enterTransition = {
+            val targetRoute = targetState.destination.route
+            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route)) {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(350)
+                ) + fadeIn(animationSpec = tween(350))
+            } else {
+                scaleIn(
+                    initialScale = 0.96f,
+                    animationSpec = tween(250)
+                ) + fadeIn(animationSpec = tween(250))
+            }
+        },
+        exitTransition = {
+            val targetRoute = targetState.destination.route
+            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route)) {
+                fadeOut(animationSpec = tween(250))
+            } else {
+                scaleOut(
+                    targetScale = 0.96f,
+                    animationSpec = tween(250)
+                ) + fadeOut(animationSpec = tween(250))
+            }
+        },
+        popEnterTransition = {
+            val initialRoute = initialState.destination.route
+            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route)) {
+                fadeIn(animationSpec = tween(250))
+            } else {
+                scaleIn(
+                    initialScale = 0.96f,
+                    animationSpec = tween(250)
+                ) + fadeIn(animationSpec = tween(250))
+            }
+        },
+        popExitTransition = {
+            val initialRoute = initialState.destination.route
+            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route)) {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(350)
+                ) + fadeOut(animationSpec = tween(350))
+            } else {
+                scaleOut(
+                    targetScale = 0.96f,
+                    animationSpec = tween(250)
+                ) + fadeOut(animationSpec = tween(250))
+            }
+        }
     ) {
         composable(Screen.Home.route) {
             HomeScreen(

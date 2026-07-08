@@ -28,6 +28,7 @@ import com.devson.vedlink.data.network.scraper.MetadataPipeline
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
+import com.devson.vedlink.ui.presentation.components.VedLinkBottomNavBar
 import com.devson.vedlink.ui.presentation.navigation.NavGraph
 import com.devson.vedlink.ui.presentation.navigation.Screen
 import com.devson.vedlink.ui.theme.VedLinkTheme
@@ -112,7 +113,6 @@ class MainActivity : ComponentActivity() {
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         bottomBar = {
-                            // Show navigation bar only on primary screens
                             val showBottomBar = currentRoute in listOf(
                                 Screen.Home.route,
                                 Screen.SavedLinks.route,
@@ -121,55 +121,19 @@ class MainActivity : ComponentActivity() {
                                 Screen.Settings.route
                             )
                             if (showBottomBar) {
-                                NavigationBar(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    tonalElevation = 3.dp,
-                                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
-                                ) {
-                                    val items = listOf(
-                                        NavigationItem(Screen.Home.route, "Home", Icons.Outlined.Home, Icons.Filled.Home),
-                                        NavigationItem(Screen.SavedLinks.route, "Saved", Icons.Outlined.Bookmarks, Icons.Filled.Bookmarks),
-                                        NavigationItem(Screen.Folders.route, "Folders", Icons.Outlined.Folder, Icons.Filled.Folder),
-                                        NavigationItem(Screen.Favorites.route, "Favorites", Icons.Outlined.StarBorder, Icons.Filled.Star),
-                                        NavigationItem(Screen.Settings.route, "Settings", Icons.Outlined.Settings, Icons.Filled.Settings)
-                                    )
-                                    items.forEach { item ->
-                                        val isSelected = currentRoute == item.route
-                                        NavigationBarItem(
-                                            selected = isSelected,
-                                            onClick = {
-                                                if (currentRoute != item.route) {
-                                                    navController.navigate(item.route) {
-                                                        popUpTo(navController.graph.startDestinationId) {
-                                                            saveState = true
-                                                        }
-                                                        launchSingleTop = true
-                                                        restoreState = true
-                                                    }
-                                                }
-                                            },
-                                            icon = {
-                                                Icon(
-                                                    imageVector = if (isSelected) item.selectedIcon else item.icon,
-                                                    contentDescription = item.label
-                                                )
-                                            },
-                                            label = {
-                                                Text(
-                                                    text = item.label,
-                                                    style = MaterialTheme.typography.labelMedium
-                                                )
-                                            },
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        )
+                                VedLinkBottomNavBar(
+                                    currentRoute = currentRoute,
+                                    isNavBarTransparent = isNavBarTransparent,
+                                    onNavigate = { route ->
+                                        navController.navigate(route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
-                                }
+                                )
                             }
                         },
                         floatingActionButton = {

@@ -3,6 +3,7 @@ package com.devson.vedlink.ui.presentation.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,55 +25,72 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .shimmerEffect()
-        ) {
-            // Ghost text lines at bottom
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .height(14.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(Color.White.copy(alpha = 0.15f))
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.45f)
-                        .height(10.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(Color.White.copy(alpha = 0.10f))
-                )
-            }
-        }
-        // Ghost action row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.End
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Left portion: Text elements
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Domain & Date
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clip(CircleShape)
+                            .shimmerEffect()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(10.dp)
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .shimmerEffect()
+                    )
+                }
+
+                // Title
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(16.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(16.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+
+                // Description snippet
+                Spacer(modifier = Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(12.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+            }
+
+            // Right portion: Image thumbnail placeholder
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .shimmerEffect()
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
+                    .size(width = 100.dp, height = 90.dp)
+                    .clip(MaterialTheme.shapes.small)
                     .shimmerEffect()
             )
         }
@@ -82,50 +100,63 @@ fun ShimmerLinkCard(modifier: Modifier = Modifier) {
 @Composable
 fun CompactShimmerLinkCard(modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.fillMaxWidth().aspectRatio(0.85f),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .shimmerEffect()
-        ) {
-            // Ghost text lines at bottom
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(end = 36.dp)
-                    .padding(start = 8.dp, bottom = 8.dp, top = 8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .height(14.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(Color.White.copy(alpha = 0.15f))
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.45f)
-                        .height(10.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(Color.White.copy(alpha = 0.10f))
-                )
-            }
-            
-            // Ghost action row (3-dot menu placeholder)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top aspect ratio image placeholder
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(20.dp)
-                    .clip(MaterialTheme.shapes.extraSmall)
+                    .fillMaxWidth()
+                    .aspectRatio(1.6f)
                     .shimmerEffect()
             )
+
+            // Bottom metadata placeholder
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Domain line
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .shimmerEffect()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(8.dp)
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .shimmerEffect()
+                    )
+                }
+
+                // Title lines
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(12.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(12.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+            }
         }
     }
 }
