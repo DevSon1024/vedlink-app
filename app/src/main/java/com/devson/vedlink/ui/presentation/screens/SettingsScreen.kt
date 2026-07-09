@@ -50,6 +50,14 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    val versionName = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+    } catch (e: Exception) {
+        "1.0.0"
+    }
+    val versionText = "v$versionName" + if (isDebug) " (Debug)" else " (Stable)"
+
     // Status bar color handling
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -61,11 +69,6 @@ fun SettingsScreen(
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
         }
-    }
-
-    // Calculate cache size on launch
-    LaunchedEffect(Unit) {
-        viewModel.calculateCacheSize(context)
     }
 
     // Export Launcher
@@ -165,7 +168,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Smart Link Manager • v1.0",
+                            text = "Smart Link Manager • $versionText",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -190,35 +193,6 @@ fun SettingsScreen(
                     title = "Appearance",
                     subtitle = "Theme, colours & fonts",
                     onClick = onNavigateToAppearance
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Storage Section
-            SettingsSectionLabel("Storage")
-            SettingsCard {
-                SettingsNavRow(
-                    icon = Icons.Default.Folder,
-                    title = "Total Links",
-                    subtitle = "${uiState.totalLinks} links saved",
-                    onClick = {}
-                )
-                SettingsDivider()
-                SettingsNavRow(
-                    icon = Icons.Default.Image,
-                    title = "Image Cache",
-                    subtitle = uiState.cacheSize,
-                    onClick = { viewModel.calculateCacheSize(context) }
-                )
-                SettingsDivider()
-                SettingsNavRow(
-                    icon = Icons.Default.DeleteSweep,
-                    title = "Clear Cache",
-                    subtitle = "Free up storage space",
-                    onClick = { viewModel.clearCache(context) },
-                    iconColor = MaterialTheme.colorScheme.error,
-                    iconContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                 )
             }
 

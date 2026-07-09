@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import coil.annotation.ExperimentalCoilApi
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.model.Link
@@ -17,36 +16,96 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import javax.inject.Inject
-import coil.imageLoader
 import com.google.gson.annotations.SerializedName
 import com.devson.vedlink.ui.theme.AppThemePalette
-import java.io.File
 import java.net.URI
 
 data class SettingsUiState(
     val totalLinks: Int = 0,
     val favoriteLinks: Int = 0,
     val isDarkMode: Boolean = false,
-    val autoFetchMetadata: Boolean = true,
-    val cacheSize: String = "Calculating..."
+    val autoFetchMetadata: Boolean = true
 )
 
-// Minimal backup structure - only essential fields
+// Enhanced backup structure containing all database fields
 data class BackupLinkItem(
     @SerializedName("url")
     val url: String,
 
-    @SerializedName("saved_at")
-    val savedAt: Long,
+    @SerializedName("canonical_url")
+    val canonicalUrl: String? = null,
+
+    @SerializedName("title")
+    val title: String? = null,
+
+    @SerializedName("description")
+    val description: String? = null,
+
+    @SerializedName("image_url")
+    val imageUrl: String? = null,
+
+    @SerializedName("favicon_url")
+    val faviconUrl: String? = null,
+
+    @SerializedName("domain")
+    val domain: String? = null,
+
+    @SerializedName("provider")
+    val provider: String? = null,
+
+    @SerializedName("folder_id")
+    val folderId: Int? = null,
 
     @SerializedName("is_favorite")
-    val isFavorite: Boolean
+    val isFavorite: Boolean = false,
+
+    @SerializedName("is_pinned")
+    val isPinned: Boolean = false,
+
+    @SerializedName("is_archived")
+    val isArchived: Boolean = false,
+
+    @SerializedName("is_unread")
+    val isUnread: Boolean = true,
+
+    @SerializedName("notes")
+    val notes: String? = null,
+
+    @SerializedName("is_pinned_notes")
+    val isPinnedNotes: Boolean = false,
+
+    @SerializedName("notes_updated_at")
+    val notesUpdatedAt: Long? = null,
+
+    @SerializedName("metadata_state")
+    val metadataState: String? = null,
+
+    @SerializedName("created_at")
+    val createdAt: Long? = null,
+
+    @SerializedName("saved_at")
+    val savedAt: Long? = null, // legacy fallback
+
+    @SerializedName("updated_at")
+    val updatedAt: Long? = null,
+
+    @SerializedName("last_updated")
+    val lastUpdated: Long? = null,
+
+    @SerializedName("etag")
+    val eTag: String? = null,
+
+    @SerializedName("last_modified")
+    val lastModified: String? = null,
+
+    @SerializedName("tags")
+    val tags: List<String>? = null
 )
 
 // Root backup structure
 data class BackupData(
     @SerializedName("version")
-    val version: Int = 1,
+    val version: Int = 2,
 
     @SerializedName("app_name")
     val appName: String = "VedLink",
@@ -168,88 +227,39 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Calculate cache size with proper formatting
-     */
-    fun calculateCacheSize(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val size = getCacheSize(context)
-            _uiState.update { it.copy(cacheSize = size) }
-        }
-    }
-
-    /**
-     * Get cache size in human-readable format
-     */
-    private fun getCacheSize(context: Context): String {
-        return try {
-            val cacheDir = context.cacheDir
-            val totalSize = calculateDirectorySize(cacheDir)
-            formatFileSize(totalSize)
-        } catch (e: Exception) {
-            "0 B"
-        }
-    }
-
-    private fun calculateDirectorySize(directory: File): Long {
-        var size: Long = 0
-        if (directory.exists()) {
-            val files = directory.listFiles()
-            if (files != null) {
-                for (file in files) {
-                    size += if (file.isDirectory) {
-                        calculateDirectorySize(file)
-                    } else {
-                        file.length()
-                    }
-                }
-            }
-        }
-        return size
-    }
-
-    private fun formatFileSize(size: Long): String {
-        return when {
-            size < 1024 -> "$size B"
-            size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-            size < 1024 * 1024 * 1024 -> String.format("%.2f MB", size / (1024.0 * 1024.0))
-            else -> String.format("%.2f GB", size / (1024.0 * 1024.0 * 1024.0))
-        }
-    }
-
-    @OptIn(ExperimentalCoilApi::class)
-    fun clearCache(context: Context) {
-        viewModelScope.launch {
-            try {
-                // Clear app cache
-                context.cacheDir.deleteRecursively()
-
-                // Clear Coil image cache
-                context.imageLoader.memoryCache?.clear()
-                context.imageLoader.diskCache?.clear()
-
-                _toastMessage.emit("Cache cleared successfully")
-
-                // Recalculate cache size after clearing
-                calculateCacheSize(context)
-            } catch (e: Exception) {
-                _toastMessage.emit("Failed to clear cache: ${e.message}")
-            }
-        }
-    }
-
     fun exportData(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Get all links from repository
                 val allLinks = repository.getAllLinks().first()
 
-                // Map to minimal backup structure (only url, saved_at, is_favorite)
+                // Map to complete backup structure
                 val backupLinks = allLinks.map { link ->
                     BackupLinkItem(
                         url = link.url,
+                        canonicalUrl = link.canonicalUrl,
+                        title = link.title,
+                        description = link.description,
+                        imageUrl = link.imageUrl,
+                        faviconUrl = link.faviconUrl,
+                        domain = link.domain,
+                        provider = link.provider.name,
+                        folderId = link.folderId,
+                        isFavorite = link.isFavorite,
+                        isPinned = link.isPinned,
+                        isArchived = link.isArchived,
+                        isUnread = link.isUnread,
+                        notes = link.notes,
+                        isPinnedNotes = link.isPinnedNotes,
+                        notesUpdatedAt = link.notesUpdatedAt,
+                        metadataState = link.metadataState.name,
+                        createdAt = link.createdAt,
                         savedAt = link.createdAt,
-                        isFavorite = link.isFavorite
+                        updatedAt = link.updatedAt,
+                        lastUpdated = link.lastUpdated,
+                        eTag = link.eTag,
+                        lastModified = link.lastModified,
+                        tags = link.tags
                     )
                 }
 
@@ -305,25 +315,46 @@ class SettingsViewModel @Inject constructor(
                     var duplicateCount = 0
 
                     backupData.links.forEach { item ->
-                        // Normalise the URL from the backup before checking for duplicates.
-                        // This prevents the same link being re-inserted just because it has a
-                        // trailing slash, different casing in the scheme/host, or extra whitespace.
                         val normalisedUrl = normaliseUrl(item.url)
 
                         val existingLink = repository.getLinkByUrl(normalisedUrl)
-                            ?: repository.getLinkByUrl(item.url) // fallback: try the raw URL too
+                            ?: repository.getLinkByUrl(item.url)
 
                         if (existingLink == null) {
-                            val domain = extractDomain(normalisedUrl)
+                            val domainName = item.domain ?: extractDomain(normalisedUrl)
 
                             val newLink = Link(
                                 url = normalisedUrl,
+                                canonicalUrl = item.canonicalUrl ?: normalisedUrl,
+                                title = item.title ?: domainName,
+                                description = item.description,
+                                imageUrl = item.imageUrl,
+                                faviconUrl = item.faviconUrl,
+                                domain = domainName,
+                                provider = try {
+                                    com.devson.vedlink.domain.model.WebsiteProvider.valueOf(item.provider ?: "GENERIC")
+                                } catch (e: Exception) {
+                                    com.devson.vedlink.domain.model.WebsiteProvider.GENERIC
+                                },
+                                folderId = item.folderId,
                                 isFavorite = item.isFavorite,
-                                title = domain,
-                                description = null,
-                                imageUrl = null,
-                                domain = domain,
-                                createdAt = item.savedAt
+                                isPinned = item.isPinned,
+                                isArchived = item.isArchived,
+                                isUnread = item.isUnread,
+                                notes = item.notes,
+                                isPinnedNotes = item.isPinnedNotes,
+                                notesUpdatedAt = item.notesUpdatedAt,
+                                metadataState = try {
+                                    com.devson.vedlink.domain.model.MetadataState.valueOf(item.metadataState ?: "QUEUED")
+                                } catch (e: Exception) {
+                                    com.devson.vedlink.domain.model.MetadataState.QUEUED
+                                },
+                                createdAt = item.createdAt ?: item.savedAt ?: System.currentTimeMillis(),
+                                updatedAt = item.updatedAt ?: System.currentTimeMillis(),
+                                lastUpdated = item.lastUpdated ?: System.currentTimeMillis(),
+                                eTag = item.eTag,
+                                lastModified = item.lastModified,
+                                tags = item.tags ?: emptyList()
                             )
 
                             repository.insertLink(newLink)

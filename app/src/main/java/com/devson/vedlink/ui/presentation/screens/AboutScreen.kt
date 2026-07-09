@@ -63,7 +63,7 @@ fun AboutScreen(
         }
     }
 
-    // Get version info from context
+    val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
     } catch (e: Exception) {
@@ -80,6 +80,7 @@ fun AboutScreen(
     } catch (e: Exception) {
         "1"
     }
+    val versionText = "v$versionName" + if (isDebug) " (Debug)" else " (Stable)"
 
     Scaffold(
         topBar = {
@@ -156,7 +157,7 @@ fun AboutScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Smart Link Manager • v$versionName",
+                            text = "Smart Link Manager • $versionText",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -242,7 +243,7 @@ fun AboutScreen(
 
             // Device Info Section
             SettingsSectionLabel("Device Information")
-            DeviceInfoCard(versionName = versionName, versionCode = versionCode)
+            DeviceInfoCard(versionName = versionName, versionCode = versionCode, isDebug = isDebug)
 
             // Footer
             Spacer(modifier = Modifier.height(32.dp))
@@ -315,7 +316,7 @@ private fun CreditItem(
 }
 
 @Composable
-fun DeviceInfoCard(versionName: String, versionCode: String) {
+fun DeviceInfoCard(versionName: String, versionCode: String, isDebug: Boolean) {
     val supportedAbis = Build.SUPPORTED_ABIS.joinToString(", ")
     val manufacturer = Build.MANUFACTURER ?: "Unknown"
     val model = Build.MODEL ?: "Unknown"
@@ -327,6 +328,8 @@ fun DeviceInfoCard(versionName: String, versionCode: String) {
                 .padding(20.dp)
         ) {
             DeviceInfoRow("App Version", "$versionName ($versionCode)")
+            SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
+            DeviceInfoRow("Build Type", if (isDebug) "Debug" else "Stable (Release)")
             SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
             DeviceInfoRow("Android Version", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             SettingsDivider(modifier = Modifier.padding(vertical = 12.dp))
