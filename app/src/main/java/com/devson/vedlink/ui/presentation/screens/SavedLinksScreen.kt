@@ -319,7 +319,9 @@ fun SavedLinksScreen(
                                                 onRefreshClick = { viewModel.refreshLink(link.id) },
                                                 onDeleteClick = { viewModel.deleteLink(link) },
                                                 showFavicon = uiState.viewSettings.showFavicon,
-                                                showUrl = uiState.viewSettings.showUrl
+                                                showUrl = uiState.viewSettings.showUrl,
+                                                showTags = uiState.viewSettings.showTags,
+                                                showDate = uiState.viewSettings.showDateSaved
                                             )
                                         }
                                         // count >= 3 → MicroLinkCard (dense photo grid)

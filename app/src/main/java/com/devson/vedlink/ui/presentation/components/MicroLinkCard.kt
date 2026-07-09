@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,19 +82,22 @@ fun MicroLinkCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // --- Background: image or placeholder ---
             if (!link.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(link.imageUrl)
-                        // Downsample aggressively for dense grids
-                        .size(200, 200)
-                        .scale(Scale.FILL)
-                        .crossfade(true)
-                        // Strict caching – avoid re-downloads on scroll
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .networkCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = link.title,
+                    val previewRequest = remember(link.imageUrl) {
+                        ImageRequest.Builder(context)
+                            .data(link.imageUrl)
+                            // Downsample aggressively for dense grids
+                            .size(200, 200)
+                            .scale(Scale.FILL)
+                            .crossfade(true)
+                            // Strict caching – avoid re-downloads on scroll
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = previewRequest,
+                        contentDescription = link.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     alpha = if (isSelectionMode && !isSelected) 0.6f else 1f
@@ -115,11 +119,14 @@ fun MicroLinkCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (!link.faviconUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
+                        val faviconRequest = remember(link.faviconUrl) {
+                            ImageRequest.Builder(context)
                                 .data(link.faviconUrl)
                                 .crossfade(true)
-                                .build(),
+                                .build()
+                        }
+                        AsyncImage(
+                            model = faviconRequest,
                             contentDescription = null,
                             modifier = Modifier
                                 .size(32.dp)

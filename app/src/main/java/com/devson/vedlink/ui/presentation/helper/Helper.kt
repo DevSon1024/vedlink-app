@@ -9,10 +9,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,14 +36,17 @@ fun SelectionTopBar(
         title = {
             Text(
                 text = "$selectedCount selected",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         navigationIcon = {
             IconButton(onClick = onClose) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Exit selection mode"
+                    contentDescription = "Exit selection mode",
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
@@ -54,36 +62,26 @@ fun SelectionTopBar(
                 }
             }
 
+            // Dynamic Favorite Icon based on status
+            if (favoriteStatus != FavoriteStatus.HIDDEN) {
+                IconButton(onClick = onFavorite) {
+                    Icon(
+                        imageVector = when (favoriteStatus) {
+                            FavoriteStatus.ALL_FAVORITED -> Icons.Default.Favorite
+                            else -> Icons.Default.FavoriteBorder
+                        },
+                        contentDescription = if (favoriteStatus == FavoriteStatus.ALL_FAVORITED) "Remove from favorites" else "Add to favorites",
+                        tint = if (favoriteStatus == FavoriteStatus.ALL_FAVORITED) Color(0xFFFF4081) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             IconButton(onClick = onShare) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "Share selected",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            // Dynamic Favorite Icon based on status
-            if (favoriteStatus != FavoriteStatus.HIDDEN) {
-                IconButton(onClick = onFavorite) {
-                    Icon(
-                        imageVector = when (favoriteStatus) {
-                            FavoriteStatus.ALL_FAVORITED -> Icons.Default.HeartBroken
-                            FavoriteStatus.NONE_FAVORITED -> Icons.Default.Favorite
-                            FavoriteStatus.MIXED -> Icons.Default.Favorite
-                            FavoriteStatus.HIDDEN -> Icons.Default.Favorite // Won't be shown
-                        },
-                        contentDescription = when (favoriteStatus) {
-                            FavoriteStatus.ALL_FAVORITED -> "Remove from favorites"
-                            FavoriteStatus.NONE_FAVORITED -> "Add to favorites"
-                            FavoriteStatus.MIXED -> "Add to favorites"
-                            FavoriteStatus.HIDDEN -> ""
-                        },
-                        tint = when (favoriteStatus) {
-                            FavoriteStatus.ALL_FAVORITED -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
             }
 
             IconButton(onClick = onDelete) {
@@ -95,7 +93,10 @@ fun SelectionTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     )
 }
@@ -201,4 +202,88 @@ fun getFavoriteStatus(selectedLinks: List<Link>, hasMixedContext: Boolean = fals
         favoritedCount == 0 -> FavoriteStatus.NONE_FAVORITED
         else -> FavoriteStatus.MIXED
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TagsDialog(
+    tags: List<String>,
+    onDismiss: () -> Unit,
+    onCopyAll: () -> Unit,
+    onCopySingleTag: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Label,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Tags Collection",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "${tags.size} tag(s) associated with this link:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tags.forEach { tag ->
+                        SuggestionChip(
+                            onClick = { onCopySingleTag(tag) },
+                            label = { Text(tag) },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copy tag",
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onCopyAll,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CopyAll,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy All")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        shape = RoundedCornerShape(16.dp)
+    )
 }

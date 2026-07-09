@@ -300,11 +300,13 @@ fun LinkDetailsScreen(
                             )
                         }
                         if (!link.imageUrl.isNullOrBlank()) {
+                            val imageShape = MaterialTheme.shapes.extraSmall
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                                     .wrapContentHeight()
+                                    .clip(imageShape)
                                     .combinedClickable(
                                         onClick = { showImageDialog = true },
                                         onLongClick = {
@@ -317,7 +319,7 @@ fun LinkDetailsScreen(
                                             }
                                         }
                                     ),
-                                shape = MaterialTheme.shapes.extraSmall
+                                shape = imageShape
                             ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
@@ -345,6 +347,7 @@ fun LinkDetailsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)
+                                .clip(RoundedCornerShape(4.dp))
                                 .combinedClickable(
                                     onClick = {},
                                     onLongClick = {
@@ -368,6 +371,7 @@ fun LinkDetailsScreen(
                         Row(
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)
+                                .clip(RoundedCornerShape(4.dp))
                                 .combinedClickable(
                                     onClick = {},
                                     onLongClick = {
@@ -402,10 +406,12 @@ fun LinkDetailsScreen(
                         // Description with Long Press to Copy
                         if (!link.description.isNullOrBlank()) {
                             SectionHeader("Description")
+                            val descShape = CardDefaults.shape
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
+                                    .clip(descShape)
                                     .combinedClickable(
                                         onClick = {},
                                         onLongClick = {
@@ -417,6 +423,7 @@ fun LinkDetailsScreen(
                                             )
                                         }
                                     ),
+                                shape = descShape,
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
@@ -432,10 +439,12 @@ fun LinkDetailsScreen(
                         }
 
                         // URL Card
+                        val urlShape = CardDefaults.shape
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
+                                .clip(urlShape)
                                 .combinedClickable(
                                     onClick = {},
                                     onLongClick = {
@@ -447,6 +456,7 @@ fun LinkDetailsScreen(
                                         )
                                     }
                                 ),
+                            shape = urlShape,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer
                             )

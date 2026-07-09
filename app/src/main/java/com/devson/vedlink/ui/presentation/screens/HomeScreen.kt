@@ -19,7 +19,7 @@ import androidx.compose.material3.carousel.CarouselItemScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ManageSearch
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.*
@@ -131,13 +131,14 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // --- Greeting Section ---
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -184,7 +185,9 @@ fun HomeScreen(
                     exit = fadeOut(tween(400))
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         StatCard(
@@ -216,7 +219,11 @@ fun HomeScreen(
                     enter = fadeIn(tween(700)) + slideInVertically(tween(700)) { 20 },
                     exit  = fadeOut(tween(400))
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    ) {
                         Text(
                             text = "Explore",
                             style = MaterialTheme.typography.titleMedium,
@@ -263,7 +270,9 @@ fun HomeScreen(
                 ) {
                     Column {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -284,20 +293,27 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val carouselState = rememberCarouselState { uiState.recentLinks.size }
+                        val carouselState = rememberCarouselState { uiState.recentLinks.size + 1 }
                         HorizontalMultiBrowseCarousel(
                             state = carouselState,
                             preferredItemWidth = 280.dp,
                             itemSpacing = 12.dp,
+                            contentPadding = PaddingValues(horizontal = 20.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)
                         ) { index ->
-                            val link = uiState.recentLinks[index]
-                            JumpBackInCard(
-                                link = link,
-                                onClick = { onNavigateToDetails(link.id) }
-                            )
+                            if (index < uiState.recentLinks.size) {
+                                val link = uiState.recentLinks[index]
+                                JumpBackInCard(
+                                    link = link,
+                                    onClick = { onNavigateToDetails(link.id) }
+                                )
+                            } else {
+                                SeeAllCarouselCard(
+                                    onClick = onNavigateToSavedLinks
+                                )
+                            }
                         }
                     }
                 }
@@ -438,15 +454,18 @@ private fun CarouselItemScope.JumpBackInCard(
                     .height(115.dp)
             ) {
                 if (!link.imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val previewRequest = remember(link.imageUrl) {
+                        ImageRequest.Builder(context)
                             .data(link.imageUrl)
                             .size(600, 300)
                             .scale(Scale.FILL)
                             .crossfade(true)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = previewRequest,
                         contentDescription = link.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -509,11 +528,14 @@ private fun CarouselItemScope.JumpBackInCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (!link.faviconUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
+                        val faviconRequest = remember(link.faviconUrl) {
+                            ImageRequest.Builder(context)
                                 .data(link.faviconUrl)
                                 .crossfade(true)
-                                .build(),
+                                .build()
+                        }
+                        AsyncImage(
+                            model = faviconRequest,
                             contentDescription = null,
                             modifier = Modifier
                                 .size(11.dp)
@@ -556,3 +578,56 @@ private fun CarouselItemScope.JumpBackInCard(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CarouselItemScope.SeeAllCarouselCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cardShape = RoundedCornerShape(12.dp)
+    Card(
+        onClick = onClick,
+        modifier = modifier
+            .maskClip(cardShape)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                shape = cardShape
+            ),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.08f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "See All",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "See All Links",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+    }
+}
+

@@ -96,9 +96,6 @@ class SettingsViewModel @Inject constructor(
     val isNavBarTransparent: StateFlow<Boolean> = themePreferences.navBarTransparent
         .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
-    val isBackgroundBlurEnabled: StateFlow<Boolean> = themePreferences.isBackgroundBlurEnabled
-        .stateIn(viewModelScope, SharingStarted.Lazily, true)
-
     init {
         loadStats()
         loadPreferences()
@@ -153,12 +150,6 @@ class SettingsViewModel @Inject constructor(
     fun setNavBarTransparent(transparent: Boolean) {
         viewModelScope.launch {
             themePreferences.setNavBarTransparent(transparent)
-        }
-    }
-
-    fun setBackgroundBlurEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            themePreferences.setBackgroundBlurEnabled(enabled)
         }
     }
 

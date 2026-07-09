@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,6 +33,8 @@ import coil.size.Scale
 import com.devson.vedlink.domain.model.Link
 import java.text.SimpleDateFormat
 import java.util.*
+import com.devson.vedlink.ui.presentation.helper.TagsDialog
+import com.devson.vedlink.ui.presentation.helper.copyToClipboard
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -54,6 +57,7 @@ fun LinkCard(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showTagsDialog by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
@@ -121,11 +125,14 @@ fun LinkCard(
                     ) {
                         if (showFavicon) {
                             if (!link.faviconUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
+                                val faviconRequest = remember(link.faviconUrl) {
+                                    ImageRequest.Builder(context)
                                         .data(link.faviconUrl)
                                         .crossfade(true)
-                                        .build(),
+                                        .build()
+                                }
+                                AsyncImage(
+                                    model = faviconRequest,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(14.dp)
@@ -296,7 +303,9 @@ fun LinkCard(
                                 onCopyClick = { onCopyClick(); showMenu = false },
                                 onShareClick = { onShareClick(); showMenu = false },
                                 onRefreshClick = { onRefreshClick(); showMenu = false },
-                                onDeleteClick = { onDeleteClick(); showMenu = false }
+                                onDeleteClick = { onDeleteClick(); showMenu = false },
+                                tags = link.tags,
+                                onViewTagsClick = { showTagsDialog = true; showMenu = false }
                             )
                         }
                     }
@@ -310,15 +319,18 @@ fun LinkCard(
                     .clip(MaterialTheme.shapes.small)
             ) {
                 if (!link.imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val previewRequest = remember(link.imageUrl) {
+                        ImageRequest.Builder(context)
                             .data(link.imageUrl)
                             .size(300, 270)
                             .scale(Scale.FILL)
                             .crossfade(true)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = previewRequest,
                         contentDescription = link.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -360,6 +372,21 @@ fun LinkCard(
             }
         }
     }
+
+    if (showTagsDialog) {
+        TagsDialog(
+            tags = link.tags,
+            onDismiss = { showTagsDialog = false },
+            onCopyAll = {
+                copyToClipboard(context, link.tags.joinToString(", "))
+                showTagsDialog = false
+            },
+            onCopySingleTag = { tag ->
+                copyToClipboard(context, tag)
+                showTagsDialog = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -371,12 +398,26 @@ fun LinkOptionsMenu(
     onCopyClick: () -> Unit,
     onShareClick: () -> Unit,
     onRefreshClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    tags: List<String> = emptyList(),
+    onViewTagsClick: (() -> Unit)? = null
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss
     ) {
+        if (onViewTagsClick != null && tags.isNotEmpty()) {
+            DropdownMenuItem(
+                text = { Text("View All Tags") },
+                onClick = onViewTagsClick,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Label,
+                        contentDescription = null
+                    )
+                }
+            )
+        }
         DropdownMenuItem(
             text = { Text(if (isFavorite) "Remove from favorites" else "Add to favorites") },
             onClick = onFavoriteClick,

@@ -53,7 +53,6 @@ class ThemePreferences @Inject constructor(
 
     // Additional Appearance Preferences
     private val NAV_BAR_TRANSPARENT_KEY = booleanPreferencesKey("nav_bar_transparent")
-    private val BACKGROUND_BLUR_ENABLED_KEY = booleanPreferencesKey("background_blur_enabled")
 
     // Flows
     val isDarkMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -272,19 +271,9 @@ class ThemePreferences @Inject constructor(
         preferences[NAV_BAR_TRANSPARENT_KEY] ?: false
     }
 
-    val isBackgroundBlurEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[BACKGROUND_BLUR_ENABLED_KEY] ?: true
-    }
-
     suspend fun setNavBarTransparent(transparent: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[NAV_BAR_TRANSPARENT_KEY] = transparent
-        }
-    }
-
-    suspend fun setBackgroundBlurEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[BACKGROUND_BLUR_ENABLED_KEY] = enabled
         }
     }
 }

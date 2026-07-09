@@ -4,9 +4,13 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Circle
@@ -30,6 +34,8 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.ui.presentation.helper.TagsDialog
+import com.devson.vedlink.ui.presentation.helper.copyToClipboard
 
 /**
  * A dense, full-bleed portrait card for 2-column grid layouts.
@@ -51,9 +57,12 @@ fun CompactLinkCard(
     onDeleteClick: () -> Unit = {},
     showFavicon: Boolean = true,
     showUrl: Boolean = true,
+    showTags: Boolean = true,
+    showDate: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showTagsDialog by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
@@ -94,15 +103,18 @@ fun CompactLinkCard(
                     .aspectRatio(1.6f)
             ) {
                 if (!link.imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val previewRequest = remember(link.imageUrl) {
+                        ImageRequest.Builder(context)
                             .data(link.imageUrl)
                             .size(400, 250)
                             .scale(Scale.FILL)
                             .crossfade(true)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = previewRequest,
                         contentDescription = link.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -181,6 +193,33 @@ fun CompactLinkCard(
                         }
                     }
                 }
+
+                // Bottom-right: Tag overlay (if showTags is true and tags exist, show only the first tag)
+                if (showTags && link.tags.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                    ) {
+                        link.tags.firstOrNull()?.let { tag ->
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Bottom portion: Metadata and text
@@ -199,11 +238,14 @@ fun CompactLinkCard(
                     ) {
                         if (showFavicon) {
                             if (!link.faviconUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
+                                val faviconRequest = remember(link.faviconUrl) {
+                                    ImageRequest.Builder(context)
                                         .data(link.faviconUrl)
                                         .crossfade(true)
-                                        .build(),
+                                        .build()
+                                }
+                                AsyncImage(
+                                    model = faviconRequest,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(12.dp)
@@ -262,60 +304,109 @@ fun CompactLinkCard(
                 }
 
                 // Favorite and Options Actions at the bottom
-                if (!isSelectionMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onFavoriteClick()
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (link.isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Toggle favourite",
-                                modifier = Modifier.size(15.dp),
-                                tint = if (link.isFavorite) Color(0xFFFF4081) else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (showDate) {
+                        Text(
+                            text = formatTimeAgo(link.createdAt),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            maxLines = 1
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
 
-                        Box {
+                    if (!isSelectionMode) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             IconButton(
-                                onClick = { showMenu = true },
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onFavoriteClick()
+                                },
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More options",
+                                    imageVector = if (link.isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Toggle favourite",
                                     modifier = Modifier.size(15.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = if (link.isFavorite) Color(0xFFFF4081) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
-                            LinkOptionsMenu(
-                                expanded = showMenu,
-                                onDismiss = { showMenu = false },
-                                isFavorite = link.isFavorite,
-                                onFavoriteClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onFavoriteClick()
-                                    showMenu = false
-                                },
-                                onCopyClick = { onCopyClick(); showMenu = false },
-                                onShareClick = { onShareClick(); showMenu = false },
-                                onRefreshClick = { onRefreshClick(); showMenu = false },
-                                onDeleteClick = { onDeleteClick(); showMenu = false }
-                            )
+                            Box {
+                                IconButton(
+                                    onClick = { showMenu = true },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More options",
+                                        modifier = Modifier.size(15.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                LinkOptionsMenu(
+                                    expanded = showMenu,
+                                    onDismiss = { showMenu = false },
+                                    isFavorite = link.isFavorite,
+                                    onFavoriteClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onFavoriteClick()
+                                        showMenu = false
+                                    },
+                                    onCopyClick = { onCopyClick(); showMenu = false },
+                                    onShareClick = { onShareClick(); showMenu = false },
+                                    onRefreshClick = { onRefreshClick(); showMenu = false },
+                                    onDeleteClick = { onDeleteClick(); showMenu = false },
+                                    tags = link.tags,
+                                    onViewTagsClick = { showTagsDialog = true; showMenu = false }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showTagsDialog) {
+        TagsDialog(
+            tags = link.tags,
+            onDismiss = { showTagsDialog = false },
+            onCopyAll = {
+                copyToClipboard(context, link.tags.joinToString(", "))
+                showTagsDialog = false
+            },
+            onCopySingleTag = { tag ->
+                copyToClipboard(context, tag)
+                showTagsDialog = false
+            }
+        )
+    }
+}
+
+private fun formatTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    return when {
+        diff < 60_000         -> "Just now"
+        diff < 3_600_000      -> "${diff / 60_000}m ago"
+        diff < 86_400_000     -> "${diff / 3_600_000}h ago"
+        diff < 604_800_000    -> "${diff / 86_400_000}d ago"
+        diff < 2_592_000_000  -> "${diff / 604_800_000}w ago"
+        else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }

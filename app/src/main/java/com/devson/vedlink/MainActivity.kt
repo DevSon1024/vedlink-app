@@ -73,7 +73,6 @@ class MainActivity : ComponentActivity() {
             val colorSchemePref by themePreferences.colorScheme.collectAsState(initial = 0)
             val dynamicColor by themePreferences.dynamicColor.collectAsState(initial = false)
             val isNavBarTransparent by themePreferences.navBarTransparent.collectAsState(initial = false)
-            val isBackgroundBlurEnabled by themePreferences.isBackgroundBlurEnabled.collectAsState(initial = true)
 
             val forceDark = when (themeMode) {
                 1 -> false

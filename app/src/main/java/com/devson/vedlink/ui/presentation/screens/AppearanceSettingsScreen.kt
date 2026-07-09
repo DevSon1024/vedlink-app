@@ -59,7 +59,6 @@ fun AppearanceSettingsScreen(
     val dynamicColor  by settingsViewModel.dynamicColor.collectAsState()
     val selectedPalette by settingsViewModel.selectedPalette.collectAsState()
     val navBarTransparent by settingsViewModel.isNavBarTransparent.collectAsState()
-    val isBackgroundBlurEnabled by settingsViewModel.isBackgroundBlurEnabled.collectAsState()
 
     // Status bar color handling
     val view = LocalView.current
@@ -268,15 +267,6 @@ fun AppearanceSettingsScreen(
                     subtitle  = "Content scrolls behind the system nav bar",
                     checked   = navBarTransparent,
                     onCheckedChange = { settingsViewModel.setNavBarTransparent(it) }
-                )
- 
-                SettingsDivider()
-                SettingsSwitchItem(
-                    icon      = Icons.Default.LensBlur,
-                    title     = "Background Blur",
-                    subtitle  = "Apply a blur effect to the navigation bar",
-                    checked   = isBackgroundBlurEnabled,
-                    onCheckedChange = { settingsViewModel.setBackgroundBlurEnabled(it) }
                 )
             }
  
