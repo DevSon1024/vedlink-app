@@ -49,6 +49,8 @@ fun CompactLinkCard(
     onShareClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    showFavicon: Boolean = true,
+    showUrl: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -61,9 +63,11 @@ fun CompactLinkCard(
         MaterialTheme.colorScheme.surfaceContainerLow
     }
 
+    val cardShape = RoundedCornerShape(12.dp)
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -75,10 +79,10 @@ fun CompactLinkCard(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.medium
+                    shape = cardShape
                 ) else Modifier
             ),
-        shape = MaterialTheme.shapes.medium,
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
@@ -187,42 +191,48 @@ fun CompactLinkCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Favicon & Domain Row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (!link.faviconUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(link.faviconUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(11.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                        )
+                if (showFavicon || showUrl) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (showFavicon) {
+                            if (!link.faviconUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(link.faviconUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Language,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        if (showUrl) {
+                            Text(
+                                text = link.domain ?: "Unknown",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                    Text(
-                        text = link.domain ?: "Unknown",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
 
                 // Title

@@ -47,6 +47,10 @@ fun LinkCard(
     onShareClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    showFavicon: Boolean = true,
+    showUrl: Boolean = true,
+    showTags: Boolean = true,
+    showDate: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -59,9 +63,11 @@ fun LinkCard(
         MaterialTheme.colorScheme.surfaceContainerLow
     }
 
+    val cardShape = RoundedCornerShape(12.dp)
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -73,10 +79,10 @@ fun LinkCard(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.large
+                    shape = cardShape
                 ) else Modifier
             ),
-        shape = MaterialTheme.shapes.large,
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
@@ -108,54 +114,64 @@ fun LinkCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Domain, Favicon, and Relative time ago
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (!link.faviconUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(link.faviconUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                        )
+                if (showFavicon || showUrl || showDate) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (showFavicon) {
+                            if (!link.faviconUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(link.faviconUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Language,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(13.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+
+                        if (showUrl) {
+                            Text(
+                                text = link.domain ?: "Unknown",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        if (showDate) {
+                            if (showUrl || showFavicon) {
+                                Text(
+                                    text = "·",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+
+                            Text(
+                                text = formatTimeAgo(link.createdAt),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                maxLines = 1
+                            )
+                        }
                     }
-
-                    Text(
-                        text = link.domain ?: "Unknown",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Text(
-                        text = "·",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-
-                    Text(
-                        text = formatTimeAgo(link.createdAt),
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        maxLines = 1
-                    )
                 }
 
                 // Title
@@ -184,7 +200,7 @@ fun LinkCard(
                 }
 
                 // Inline tags if any exist
-                if (link.tags.isNotEmpty()) {
+                if (showTags && link.tags.isNotEmpty()) {
                     Row(
                         modifier = Modifier.padding(top = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)

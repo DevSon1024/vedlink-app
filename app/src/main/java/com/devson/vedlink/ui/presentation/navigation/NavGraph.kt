@@ -1,29 +1,30 @@
 package com.devson.vedlink.ui.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.devson.vedlink.ui.presentation.screens.AboutScreen
-import com.devson.vedlink.ui.presentation.screens.LinkDetailsScreen
+import com.devson.vedlink.ui.presentation.screens.*
 import com.devson.vedlink.ui.presentation.util.LinkDetailsPagerScreen
-import com.devson.vedlink.ui.presentation.screens.FavoritesScreen
-import com.devson.vedlink.ui.presentation.screens.FoldersScreen
-import com.devson.vedlink.ui.presentation.screens.HomeScreen
-import com.devson.vedlink.ui.presentation.screens.SavedLinksScreen
-import com.devson.vedlink.ui.presentation.screens.SettingsScreen
-import com.devson.vedlink.ui.presentation.screens.AppearanceSettingsScreen
-import com.devson.vedlink.ui.presentation.screens.CustomizeHomeScreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
+    pagerState: PagerState,
     onNavigateToDetails: (Int) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
@@ -79,82 +80,48 @@ fun NavGraph(
         }
     ) {
         composable(Screen.Home.route) {
-            HomeScreen(
-                onNavigateToSavedLinks = {
-                    navController.navigate(Screen.SavedLinks.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onNavigateToFavorites = {
-                    navController.navigate(Screen.Favorites.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onNavigateToFolders = {
-                    navController.navigate(Screen.Folders.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onNavigateToDetails = onNavigateToDetails,
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = true,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> HomeScreen(
+                        onNavigateToSavedLinks = { scope.launch { pagerState.animateScrollToPage(1) } },
+                        onNavigateToFolders = { scope.launch { pagerState.animateScrollToPage(2) } },
+                        onNavigateToFavorites = { scope.launch { pagerState.animateScrollToPage(3) } },
+                        onNavigateToSettings = { scope.launch { pagerState.animateScrollToPage(4) } },
+                        onNavigateToDetails = onNavigateToDetails
+                    )
+                    1 -> SavedLinksScreen(
+                        onNavigateToDetails = { linkId, linkIds ->
+                            navController.navigate(Screen.LinkDetailsPager.createRoute(linkId, linkIds))
+                        }
+                    )
+                    2 -> FoldersScreen(onNavigateToDetails = onNavigateToDetails)
+                    3 -> FavoritesScreen(onNavigateToDetails = onNavigateToDetails)
+                    4 -> SettingsScreen(
+                        onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                        onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
+                        onNavigateToCustomizeHome = { navController.navigate(Screen.CustomizeHome.route) }
+                    )
                 }
-            )
-        }
-
-        composable(Screen.SavedLinks.route) {
-            SavedLinksScreen(
-                onNavigateToDetails = { linkId, linkIds ->
-                    navController.navigate(Screen.LinkDetailsPager.createRoute(linkId, linkIds))
-                }
-            )
-        }
-
-        composable(Screen.Favorites.route) {
-            FavoritesScreen(onNavigateToDetails = onNavigateToDetails)
-        }
-
-        composable(Screen.Folders.route) {
-            FoldersScreen(onNavigateToDetails = onNavigateToDetails)
-        }
-
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateToAbout = { navController.navigate(Screen.About.route) },
-                onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
-                onNavigateToCustomizeHome = { navController.navigate(Screen.CustomizeHome.route) }
-            )
+            }
         }
 
         composable(Screen.About.route) {
-            AboutScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            AboutScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Screen.Appearance.route) {
-            AppearanceSettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            AppearanceSettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Screen.CustomizeHome.route) {
-            CustomizeHomeScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            CustomizeHomeScreen(onNavigateBack = { navController.popBackStack() })
         }
 
-        // Legacy single-link details (used by FavoritesScreen / FoldersScreen)
+        // Legacy single-link details (kept for back-compat from FavoritesScreen / FoldersScreen)
         composable(
             route = Screen.LinkDetails.route,
             arguments = listOf(navArgument("linkId") { type = NavType.IntType })

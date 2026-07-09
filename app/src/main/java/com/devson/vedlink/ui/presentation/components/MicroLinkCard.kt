@@ -54,10 +54,12 @@ fun MicroLinkCard(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
+    val cardShape = RoundedCornerShape(12.dp)
     Card(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -69,10 +71,10 @@ fun MicroLinkCard(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.medium
+                    shape = cardShape
                 ) else Modifier
             ),
-        shape = MaterialTheme.shapes.medium,
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {

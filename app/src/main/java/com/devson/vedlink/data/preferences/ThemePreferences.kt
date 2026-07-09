@@ -35,6 +35,12 @@ class ThemePreferences @Inject constructor(
     // View Settings preferences
     private val GRID_CELLS_COUNT_KEY = intPreferencesKey("grid_cells_count")
     private val SORT_ORDER_KEY = stringPreferencesKey("sort_order")
+    private val LINK_SHOW_FAVICON_KEY = booleanPreferencesKey("link_show_favicon")
+    private val LINK_SHOW_URL_KEY = booleanPreferencesKey("link_show_url")
+    private val LINK_SHOW_TAGS_KEY = booleanPreferencesKey("link_show_tags")
+    private val LINK_SHOW_DATE_SAVED_KEY = booleanPreferencesKey("link_show_date_saved")
+    private val LINK_GRID_COLUMNS_KEY = intPreferencesKey("link_grid_columns")
+    private val LINK_LAYOUT_MODE_KEY = stringPreferencesKey("link_layout_mode")
 
     // Folder View Settings preferences
     private val FOLDER_GRID_CELLS_COUNT_KEY = intPreferencesKey("folder_grid_cells_count")
@@ -75,6 +81,30 @@ class ThemePreferences @Inject constructor(
     /** Sort order for links. "DESC" = Latest first, "ASC" = Oldest first. */
     val sortOrder: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[SORT_ORDER_KEY] ?: "DESC"
+    }
+
+    val linkShowFavicon: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LINK_SHOW_FAVICON_KEY] ?: true
+    }
+
+    val linkShowUrl: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LINK_SHOW_URL_KEY] ?: true
+    }
+
+    val linkShowTags: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LINK_SHOW_TAGS_KEY] ?: true
+    }
+
+    val linkShowDateSaved: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LINK_SHOW_DATE_SAVED_KEY] ?: true
+    }
+
+    val linkGridColumns: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[LINK_GRID_COLUMNS_KEY] ?: 2).coerceIn(2, 4)
+    }
+
+    val linkLayoutMode: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[LINK_LAYOUT_MODE_KEY] ?: "list"
     }
 
     // Folder View Settings flows
@@ -142,6 +172,42 @@ class ThemePreferences @Inject constructor(
     suspend fun setSortOrder(order: String) {
         context.dataStore.edit { preferences ->
             preferences[SORT_ORDER_KEY] = if (order == "ASC") "ASC" else "DESC"
+        }
+    }
+
+    suspend fun setLinkShowFavicon(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_SHOW_FAVICON_KEY] = show
+        }
+    }
+
+    suspend fun setLinkShowUrl(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_SHOW_URL_KEY] = show
+        }
+    }
+
+    suspend fun setLinkShowTags(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_SHOW_TAGS_KEY] = show
+        }
+    }
+
+    suspend fun setLinkShowDateSaved(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_SHOW_DATE_SAVED_KEY] = show
+        }
+    }
+
+    suspend fun setLinkGridColumns(columns: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_GRID_COLUMNS_KEY] = columns.coerceIn(2, 4)
+        }
+    }
+
+    suspend fun setLinkLayoutMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LINK_LAYOUT_MODE_KEY] = mode
         }
     }
 

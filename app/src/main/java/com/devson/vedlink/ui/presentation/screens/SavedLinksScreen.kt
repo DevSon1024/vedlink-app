@@ -29,6 +29,7 @@ import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.CompactShimmerLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
+import com.devson.vedlink.ui.presentation.components.LinkViewSettingsBottomSheet
 import com.devson.vedlink.ui.presentation.components.MicroLinkCard
 import com.devson.vedlink.ui.presentation.components.MicroShimmerLinkCard
 import com.devson.vedlink.ui.presentation.components.ShimmerLinkCard
@@ -285,7 +286,11 @@ fun SavedLinksScreen(
                                                 },
                                                 onShareClick = { shareLink(context, link.url, link.title) },
                                                 onRefreshClick = { viewModel.refreshLink(link.id) },
-                                                onDeleteClick = { viewModel.deleteLink(link) }
+                                                onDeleteClick = { viewModel.deleteLink(link) },
+                                                showFavicon = uiState.viewSettings.showFavicon,
+                                                showUrl = uiState.viewSettings.showUrl,
+                                                showTags = uiState.viewSettings.showTags,
+                                                showDate = uiState.viewSettings.showDateSaved
                                             )
                                         }
                                         // count == 2 → CompactLinkCard (card+image grid)
@@ -312,7 +317,9 @@ fun SavedLinksScreen(
                                                 },
                                                 onShareClick = { shareLink(context, link.url, link.title) },
                                                 onRefreshClick = { viewModel.refreshLink(link.id) },
-                                                onDeleteClick = { viewModel.deleteLink(link) }
+                                                onDeleteClick = { viewModel.deleteLink(link) },
+                                                showFavicon = uiState.viewSettings.showFavicon,
+                                                showUrl = uiState.viewSettings.showUrl
                                             )
                                         }
                                         // count >= 3 → MicroLinkCard (dense photo grid)
@@ -342,11 +349,13 @@ fun SavedLinksScreen(
 
     //  Bottom Sheets 
     if (showViewSettings) {
-        ViewSettingsBottomSheet(
-            gridCellsCount = uiState.gridCellsCount,
-            sortOrder = uiState.sortOrder,
-            onGridCellsChange = { viewModel.setGridCellsCount(it) },
-            onSortOrderChange = { viewModel.setSortOrder(it) },
+        LinkViewSettingsBottomSheet(
+            layoutMode = uiState.layoutMode,
+            onLayoutModeChange = { viewModel.setLayoutMode(it) },
+            gridColumns = uiState.gridColumns,
+            onGridColumnsChange = { viewModel.setGridColumns(it) },
+            viewSettings = uiState.viewSettings,
+            onViewSettingsChange = { viewModel.setViewSettings(it) },
             onDismiss = { showViewSettings = false }
         )
     }
@@ -361,201 +370,6 @@ fun SavedLinksScreen(
                 exitSelectionMode()
             }
         )
-    }
-}
-
-//  View Settings Bottom Sheet 
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ViewSettingsBottomSheet(
-    gridCellsCount: Int,
-    sortOrder: String,
-    onGridCellsChange: (Int) -> Unit,
-    onSortOrderChange: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = MaterialTheme.shapes.medium,
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp, bottom = 4.dp)
-                    .size(width = 40.dp, height = 4.dp)
-                    .then(Modifier.padding(0.dp))
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                ) {}
-            }
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            // Title
-            Text(
-                text = "View Settings",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
-            )
-
-            //  Grid Size Slider 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Grid Size",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Text(
-                        text = when (gridCellsCount) {
-                            1 -> "List"
-                            2 -> "2 Columns"
-                            3 -> "3 Columns"
-                            4 -> "4 Columns"
-                            5 -> "5 Columns"
-                            else -> "6 Columns"
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Slider(
-                value = gridCellsCount.toFloat(),
-                onValueChange = { onGridCellsChange(it.toInt()) },
-                valueRange = 1f..6f,
-                steps = 4,  // 5-step slider (1,2,3,4,5,6)
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-
-            // Tick labels
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                listOf("List", "2", "3", "4", "5", "6").forEach { label ->
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            //  Sort Order 
-            Text(
-                text = "Sort Order",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                SortChip(
-                    label = "Latest First",
-                    selected = sortOrder == "DESC",
-                    onClick = { onSortOrderChange("DESC") },
-                    modifier = Modifier.weight(1f)
-                )
-                SortChip(
-                    label = "Oldest First",
-                    selected = sortOrder == "ASC",
-                    onClick = { onSortOrderChange("ASC") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SortChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val containerColor = if (selected)
-        MaterialTheme.colorScheme.primary
-    else
-        MaterialTheme.colorScheme.surfaceVariant
-
-    val contentColor = if (selected)
-        MaterialTheme.colorScheme.onPrimary
-    else
-        MaterialTheme.colorScheme.onSurfaceVariant
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraSmall,
-        color = containerColor,
-        tonalElevation = if (selected) 0.dp else 1.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 14.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .padding(end = 0.dp),
-                    tint = contentColor
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = contentColor
-            )
-        }
     }
 }
 

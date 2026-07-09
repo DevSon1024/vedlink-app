@@ -3,6 +3,7 @@ package com.devson.vedlink.ui.presentation.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.carousel.CarouselItemScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -279,24 +284,20 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-                        val cardWidth = screenWidth * 0.75f
-
-                        val listState = rememberLazyListState()
-                        LazyRow(
-                            state = listState,
-                            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
-                            contentPadding = PaddingValues(end = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.padding(horizontal = 0.dp)
-                        ) {
-                            items(uiState.recentLinks, key = { it.id }) { link ->
-                                JumpBackInCard(
-                                    link = link,
-                                    cardWidth = cardWidth.value,
-                                    onClick = { onNavigateToDetails(link.id) }
-                                )
-                            }
+                        val carouselState = rememberCarouselState { uiState.recentLinks.size }
+                        HorizontalMultiBrowseCarousel(
+                            state = carouselState,
+                            preferredItemWidth = 280.dp,
+                            itemSpacing = 12.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        ) { index ->
+                            val link = uiState.recentLinks[index]
+                            JumpBackInCard(
+                                link = link,
+                                onClick = { onNavigateToDetails(link.id) }
+                            )
                         }
                     }
                 }
@@ -404,20 +405,26 @@ fun ActionCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun JumpBackInCard(
+private fun CarouselItemScope.JumpBackInCard(
     link: Link,
-    cardWidth: Float,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val cardShape = RoundedCornerShape(12.dp)
 
     Card(
         onClick = onClick,
-        modifier = Modifier
-            .width(cardWidth.dp)
-            .height(200.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        modifier = modifier
+            .maskClip(cardShape)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                shape = cardShape
+            ),
+        shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),

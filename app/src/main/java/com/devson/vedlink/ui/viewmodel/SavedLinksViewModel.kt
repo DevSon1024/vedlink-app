@@ -7,6 +7,7 @@ import com.devson.vedlink.data.worker.WorkManagerHelper
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.model.ScrapedMetadata
 import com.devson.vedlink.domain.usecase.*
+import com.devson.vedlink.ui.presentation.components.LinkViewSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -71,24 +72,68 @@ class SavedLinksViewModel @Inject constructor(
 
     private fun loadPreferences() {
         viewModelScope.launch {
-            val initialGrid = themePreferences.gridCellsCount.first()
+            val initialLayoutMode = themePreferences.linkLayoutMode.first()
+            val initialGridColumns = themePreferences.linkGridColumns.first()
             val initialSort = themePreferences.sortOrder.first()
+            val initialShowFavicon = themePreferences.linkShowFavicon.first()
+            val initialShowUrl = themePreferences.linkShowUrl.first()
+            val initialShowTags = themePreferences.linkShowTags.first()
+            val initialShowDateSaved = themePreferences.linkShowDateSaved.first()
+
             _uiState.update {
                 it.copy(
-                    gridCellsCount = initialGrid,
+                    layoutMode = initialLayoutMode,
+                    gridColumns = initialGridColumns,
+                    gridCellsCount = if (initialLayoutMode.equals("list", ignoreCase = true)) 1 else initialGridColumns,
                     sortOrder = initialSort,
+                    viewSettings = LinkViewSettings(
+                        showFavicon = initialShowFavicon,
+                        showUrl = initialShowUrl,
+                        showTags = initialShowTags,
+                        showDateSaved = initialShowDateSaved
+                    ),
                     isPrefsLoaded = true
                 )
             }
 
             launch {
-                themePreferences.gridCellsCount.collect { count ->
-                    _uiState.update { it.copy(gridCellsCount = count) }
+                combine(
+                    themePreferences.linkLayoutMode,
+                    themePreferences.linkGridColumns
+                ) { mode, cols ->
+                    Pair(mode, cols)
+                }.collect { (mode, cols) ->
+                    _uiState.update { 
+                        it.copy(
+                            layoutMode = mode,
+                            gridColumns = cols,
+                            gridCellsCount = if (mode.equals("list", ignoreCase = true)) 1 else cols
+                        )
+                    }
                 }
             }
+
             launch {
                 themePreferences.sortOrder.collect { order ->
                     _uiState.update { it.copy(sortOrder = order) }
+                }
+            }
+
+            launch {
+                combine(
+                    themePreferences.linkShowFavicon,
+                    themePreferences.linkShowUrl,
+                    themePreferences.linkShowTags,
+                    themePreferences.linkShowDateSaved
+                ) { favicon, url, tags, date ->
+                    LinkViewSettings(
+                        showFavicon = favicon,
+                        showUrl = url,
+                        showTags = tags,
+                        showDateSaved = date
+                    )
+                }.collect { settings ->
+                    _uiState.update { it.copy(viewSettings = settings) }
                 }
             }
         }
@@ -212,10 +257,53 @@ class SavedLinksViewModel @Inject constructor(
         }
     }
 
+    fun setLayoutMode(mode: String) {
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(
+                    layoutMode = mode,
+                    gridCellsCount = if (mode.equals("list", ignoreCase = true)) 1 else it.gridColumns
+                )
+            }
+            themePreferences.setLinkLayoutMode(mode)
+        }
+    }
+
+    fun setGridColumns(columns: Int) {
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(
+                    gridColumns = columns,
+                    gridCellsCount = if (it.layoutMode.equals("list", ignoreCase = true)) 1 else columns
+                )
+            }
+            themePreferences.setLinkGridColumns(columns)
+        }
+    }
+
+    fun setViewSettings(settings: LinkViewSettings) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(viewSettings = settings) }
+            themePreferences.setLinkShowFavicon(settings.showFavicon)
+            themePreferences.setLinkShowUrl(settings.showUrl)
+            themePreferences.setLinkShowTags(settings.showTags)
+            themePreferences.setLinkShowDateSaved(settings.showDateSaved)
+        }
+    }
+
     fun setGridCellsCount(count: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(gridCellsCount = count.coerceIn(1, 6)) }
-            themePreferences.setGridCellsCount(count)
+            val mode = if (count == 1) "list" else "grid"
+            val columns = if (count == 1) 2 else count.coerceIn(2, 4)
+            _uiState.update { 
+                it.copy(
+                    layoutMode = mode,
+                    gridColumns = columns,
+                    gridCellsCount = count.coerceIn(1, 4)
+                )
+            }
+            themePreferences.setLinkLayoutMode(mode)
+            themePreferences.setLinkGridColumns(columns)
         }
     }
 
@@ -253,6 +341,9 @@ data class SavedLinksUiState(
     val searchQuery: String = "",
     val gridCellsCount: Int = 1,
     val sortOrder: String = "DESC",
+    val layoutMode: String = "list",
+    val gridColumns: Int = 2,
+    val viewSettings: LinkViewSettings = LinkViewSettings(),
     val isPrefsLoaded: Boolean = false
 )
 

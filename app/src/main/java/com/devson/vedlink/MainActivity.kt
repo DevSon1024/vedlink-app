@@ -8,6 +8,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -98,6 +99,30 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
                 var showAddDialog by remember { mutableStateOf(false) }
 
+                val pagerState = rememberPagerState(pageCount = { 5 })
+                val mainPages = remember {
+                    listOf(
+                        Screen.Home.route,
+                        Screen.SavedLinks.route,
+                        Screen.Folders.route,
+                        Screen.Favorites.route,
+                        Screen.Settings.route
+                    )
+                }
+
+                val effectiveRoute = if (currentRoute == Screen.Home.route) {
+                    mainPages.getOrElse(pagerState.currentPage) { Screen.Home.route }
+                } else {
+                    currentRoute
+                }
+
+                // Handle back press to scroll to Home page if in main pager
+                androidx.activity.compose.BackHandler(enabled = currentRoute == Screen.Home.route && pagerState.currentPage > 0) {
+                    scope.launch {
+                        pagerState.animateScrollToPage(0)
+                    }
+                }
+
                 // Gather recent links reactively for the AddLink Bottom Sheet
                 val allLinks by linkRepository.getAllLinks().collectAsState(initial = emptyList())
                 val recentLinks = remember(allLinks) {
@@ -113,7 +138,7 @@ class MainActivity : ComponentActivity() {
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         bottomBar = {
-                            val showBottomBar = currentRoute in listOf(
+                            val showBottomBar = effectiveRoute in listOf(
                                 Screen.Home.route,
                                 Screen.SavedLinks.route,
                                 Screen.Folders.route,
@@ -122,15 +147,17 @@ class MainActivity : ComponentActivity() {
                             )
                             if (showBottomBar) {
                                 VedLinkBottomNavBar(
-                                    currentRoute = currentRoute,
+                                    currentRoute = effectiveRoute,
                                     isNavBarTransparent = isNavBarTransparent,
                                     onNavigate = { route ->
-                                        navController.navigate(route) {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
+                                        val targetIndex = mainPages.indexOf(route)
+                                        if (targetIndex != -1) {
+                                            if (currentRoute != Screen.Home.route) {
+                                                navController.popBackStack(Screen.Home.route, false)
                                             }
-                                            launchSingleTop = true
-                                            restoreState = true
+                                            scope.launch {
+                                                pagerState.animateScrollToPage(targetIndex)
+                                            }
                                         }
                                     }
                                 )
@@ -138,7 +165,7 @@ class MainActivity : ComponentActivity() {
                         },
                         floatingActionButton = {
                             // Show floating action button only on main grid screens
-                            val showFAB = currentRoute in listOf(
+                            val showFAB = effectiveRoute in listOf(
                                 Screen.Home.route,
                                 Screen.SavedLinks.route,
                                 Screen.Folders.route,
@@ -174,6 +201,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             NavGraph(
                                 navController = navController,
+                                pagerState = pagerState,
                                 onNavigateToDetails = { linkId ->
                                     navController.navigate(Screen.LinkDetails.createRoute(linkId))
                                 }
