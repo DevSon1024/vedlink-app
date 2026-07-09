@@ -56,16 +56,37 @@ import androidx.compose.ui.graphics.toArgb
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToSavedLinks: () -> Unit,
-    onNavigateToFavorites: () -> Unit,
-    onNavigateToFolders: () -> Unit,
-    onNavigateToDetails: (Int) -> Unit,
-    onNavigateToSettings: () -> Unit,
+    isActive: Boolean = false,
+    onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
+    onNavigateToSavedLinks: () -> Unit = {},
+    onNavigateToFolders: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToDetails: (Int) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(isActive) {
+        if (isActive) {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "VedLink",
+                    actions = {
+                        IconButton(onClick = onNavigateToFavorites) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "Favorites",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                )
+            )
+        }
+    }
 
     val greeting = remember {
         val calendar = Calendar.getInstance()
@@ -87,37 +108,6 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "VedLink",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToFavorites) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Favorites",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)

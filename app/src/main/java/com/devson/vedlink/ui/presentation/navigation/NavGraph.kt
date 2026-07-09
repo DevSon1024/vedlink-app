@@ -16,6 +16,13 @@ import androidx.navigation.navArgument
 import com.devson.vedlink.ui.presentation.screens.*
 import com.devson.vedlink.ui.presentation.util.LinkDetailsPagerScreen
 import kotlinx.coroutines.launch
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.font.FontWeight
+import com.devson.vedlink.ui.presentation.components.TopBarConfig
 
 @Composable
 fun NavGraph(
@@ -79,32 +86,86 @@ fun NavGraph(
             }
         }
     ) {
+        @OptIn(ExperimentalMaterial3Api::class)
         composable(Screen.Home.route) {
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = true,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                when (page) {
-                    0 -> HomeScreen(
-                        onNavigateToSavedLinks = { scope.launch { pagerState.animateScrollToPage(1) } },
-                        onNavigateToFolders = { scope.launch { pagerState.animateScrollToPage(2) } },
-                        onNavigateToFavorites = { scope.launch { pagerState.animateScrollToPage(3) } },
-                        onNavigateToSettings = { scope.launch { pagerState.animateScrollToPage(4) } },
-                        onNavigateToDetails = onNavigateToDetails
-                    )
-                    1 -> SavedLinksScreen(
-                        onNavigateToDetails = { linkId, linkIds ->
-                            navController.navigate(Screen.LinkDetailsPager.createRoute(linkId, linkIds))
+            var topBarConfig by remember { mutableStateOf(TopBarConfig()) }
+
+            Scaffold(
+                topBar = {
+                    AnimatedContent(
+                        targetState = topBarConfig,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
+                        },
+                        label = "TopBarAnimation"
+                    ) { config ->
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = config.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            },
+                            navigationIcon = config.navigationIcon,
+                            actions = config.actions,
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.background
+                            ),
+                            windowInsets = WindowInsets.statusBars
+                        )
+                    }
+                },
+                contentWindowInsets = WindowInsets(0, 0, 0, 0)
+            ) { paddingValues ->
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = true,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = paddingValues.calculateTopPadding())
+                ) { page ->
+                    val isActive = pagerState.currentPage == page
+                    val onUpdateConfig = { config: TopBarConfig ->
+                        if (isActive) {
+                            topBarConfig = config
                         }
-                    )
-                    2 -> FoldersScreen(onNavigateToDetails = onNavigateToDetails)
-                    3 -> FavoritesScreen(onNavigateToDetails = onNavigateToDetails)
-                    4 -> SettingsScreen(
-                        onNavigateToAbout = { navController.navigate(Screen.About.route) },
-                        onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
-                        onNavigateToCustomizeHome = { navController.navigate(Screen.CustomizeHome.route) }
-                    )
+                    }
+                    when (page) {
+                        0 -> HomeScreen(
+                            isActive = isActive,
+                            onUpdateTopBarConfig = onUpdateConfig,
+                            onNavigateToSavedLinks = { scope.launch { pagerState.animateScrollToPage(1) } },
+                            onNavigateToFolders = { scope.launch { pagerState.animateScrollToPage(2) } },
+                            onNavigateToFavorites = { scope.launch { pagerState.animateScrollToPage(3) } },
+                            onNavigateToSettings = { scope.launch { pagerState.animateScrollToPage(4) } },
+                            onNavigateToDetails = onNavigateToDetails
+                        )
+                        1 -> SavedLinksScreen(
+                            isActive = isActive,
+                            onUpdateTopBarConfig = onUpdateConfig,
+                            onNavigateToDetails = { linkId, linkIds ->
+                                navController.navigate(Screen.LinkDetailsPager.createRoute(linkId, linkIds))
+                            }
+                        )
+                        2 -> FoldersScreen(
+                            isActive = isActive,
+                            onUpdateTopBarConfig = onUpdateConfig,
+                            onNavigateToDetails = onNavigateToDetails
+                        )
+                        3 -> FavoritesScreen(
+                            isActive = isActive,
+                            onUpdateTopBarConfig = onUpdateConfig,
+                            onNavigateToDetails = onNavigateToDetails
+                        )
+                        4 -> SettingsScreen(
+                            isActive = isActive,
+                            onUpdateTopBarConfig = onUpdateConfig,
+                            onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                            onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
+                            onNavigateToCustomizeHome = { navController.navigate(Screen.CustomizeHome.route) }
+                        )
+                    }
                 }
             }
         }

@@ -37,7 +37,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit = {},
+    isActive: Boolean = false,
+    onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToCustomizeHome: () -> Unit = {},
@@ -57,6 +58,16 @@ fun SettingsScreen(
         "1.0.0"
     }
     val versionText = "v$versionName" + if (isDebug) " (Debug)" else " (Stable)"
+
+    LaunchedEffect(isActive) {
+        if (isActive) {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "Settings"
+                )
+            )
+        }
+    }
 
     // Status bar color handling
     val view = LocalView.current
@@ -93,28 +104,6 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
@@ -168,7 +157,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Smart Link Manager • $versionText",
+                            text = "$versionText",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

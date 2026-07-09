@@ -61,6 +61,8 @@ import kotlin.collections.get
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FoldersScreen(
+    isActive: Boolean = false,
+    onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
     onNavigateToDetails: (Int) -> Unit,
     viewModel: FoldersViewModel = hiltViewModel()
 ) {
@@ -87,6 +89,7 @@ fun FoldersScreen(
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showViewSettings by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -166,91 +169,132 @@ fun FoldersScreen(
     val selectedLinksData = activeLinks.filter { it.id in selectedLinks }
     val favoriteStatus = getFavoriteStatus(selectedLinksData)
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                if (isSelectionMode && (selectedFolderDomain != null || selectedCustomFolderId != null)) {
-                    SelectionTopBar(
-                        selectedCount = selectedLinks.size,
-                        totalCount = activeLinks.size,
-                        allSelected = selectedLinks.size == activeLinks.size,
-                        favoriteStatus = favoriteStatus,
-                        onClose = { exitSelectionMode() },
-                        onSelectAll = { handleSelectAll() },
-                        onShare = {
-                            shareMultipleLinks(context, selectedLinksData)
-                            exitSelectionMode()
-                        },
-                        onFavorite = {
-                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
-                            exitSelectionMode()
-                        },
-                        onDelete = {
-                            showDeleteDialog = true
+    LaunchedEffect(isActive) {
+        if (!isActive) {
+            isSelectionMode = false
+            selectedLinks = emptySet()
+            selectedFolderDomain = null
+            selectedCustomFolderId = null
+        }
+    }
+
+    LaunchedEffect(isActive, isSelectionMode, selectedLinks.size, activeLinks.size, selectedTab, selectedFolderDomain, selectedCustomFolderId, uiState.customFolders) {
+        if (!isActive) return@LaunchedEffect
+        if (isSelectionMode) {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "${selectedLinks.size} Selected",
+                    navigationIcon = {
+                        IconButton(onClick = { 
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear selection")
                         }
-                    )
-                } else {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = when {
-                                    selectedTab == 0 && selectedFolderDomain != null -> {
-                                        getCleanDomainName(selectedFolderDomain!!)
-                                    }
-                                    selectedTab == 1 && selectedCustomFolderId != null -> {
-                                        uiState.customFolders.find { it.id == selectedCustomFolderId }?.name ?: "Folder"
-                                    }
-                                    else -> "Folders"
-                                },
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                    },
+                    actions = {
+                        val allSelected = selectedLinks.size == activeLinks.size
+                        IconButton(onClick = { handleSelectAll() }) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = "Select all",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        navigationIcon = {
-                            if (selectedTab == 0 && selectedFolderDomain != null) {
-                                IconButton(onClick = {
+                        }
+                        IconButton(onClick = {
+                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            shareMultipleLinks(context, selectedLinksData)
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+            )
+        } else {
+            val titleText = when {
+                selectedTab == 0 && selectedFolderDomain != null -> {
+                    getCleanDomainName(selectedFolderDomain!!)
+                }
+                selectedTab == 1 && selectedCustomFolderId != null -> {
+                    uiState.customFolders.find { it.id == selectedCustomFolderId }?.name ?: "Folder"
+                }
+                else -> "Folders"
+            }
+            val hasBack = (selectedTab == 0 && selectedFolderDomain != null) || (selectedTab == 1 && selectedCustomFolderId != null)
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = titleText,
+                    navigationIcon = if (hasBack) {
+                        {
+                            IconButton(onClick = {
+                                if (selectedTab == 0 && selectedFolderDomain != null) {
                                     selectedFolderDomain = null
-                                    exitSelectionMode()
-                                }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                }
-                            } else if (selectedTab == 1 && selectedCustomFolderId != null) {
-                                IconButton(onClick = {
+                                    isSelectionMode = false
+                                    selectedLinks = emptySet()
+                                } else if (selectedTab == 1 && selectedCustomFolderId != null) {
                                     val currentFolder = uiState.customFolders.find { it.id == selectedCustomFolderId }
                                     selectedCustomFolderId = currentFolder?.parentId
-                                    exitSelectionMode()
-                                }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    isSelectionMode = false
+                                    selectedLinks = emptySet()
                                 }
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                             }
-                        },
-                        actions = {
-                            if (selectedTab == 0 && selectedFolderDomain == null) {
-                                IconButton(onClick = { showViewSettings = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.DisplaySettings,
-                                        contentDescription = "View settings",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                        }
+                    } else {
+                        {}
+                    },
+                    actions = {
+                        if (selectedTab == 0 && selectedFolderDomain == null) {
+                            IconButton(onClick = { showViewSettings = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DisplaySettings,
+                                    contentDescription = "View settings",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                            if (selectedTab == 1) {
-                                IconButton(onClick = { showCreateFolderDialog = true }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.CreateNewFolder,
-                                        contentDescription = "Add Folder",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                        }
+                        if (selectedTab == 1 && selectedCustomFolderId == null) {
+                            IconButton(onClick = { showCreateFolderDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CreateNewFolder,
+                                    contentDescription = "Add Folder",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background
-                        )
-                    )
-                }
-            },
+                        }
+                    }
+                )
+            )
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {},
             floatingActionButton = {
                 if (selectedTab == 1 && !isSelectionMode) {
                     ExtendedFloatingActionButton(

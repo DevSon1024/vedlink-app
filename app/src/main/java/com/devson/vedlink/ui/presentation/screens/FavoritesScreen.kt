@@ -40,6 +40,8 @@ import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FavoritesScreen(
+    isActive: Boolean = false,
+    onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
     onNavigateToDetails: (Int) -> Unit,
     viewModel: FavoritesViewModel = hiltViewModel()
 ) {
@@ -52,6 +54,97 @@ fun FavoritesScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    LaunchedEffect(isActive) {
+        if (!isActive && isSelectionMode) {
+            isSelectionMode = false
+            selectedLinks = emptySet()
+        }
+    }
+
+    LaunchedEffect(isActive, isSelectionMode, selectedLinks.size, uiState.favoriteLinks.size, uiState.isGridView) {
+        if (!isActive) return@LaunchedEffect
+        if (isSelectionMode) {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "${selectedLinks.size} Selected",
+                    navigationIcon = {
+                        IconButton(onClick = { 
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                        }
+                    },
+                    actions = {
+                        val allSelected = selectedLinks.size == uiState.favoriteLinks.size
+                        IconButton(onClick = {
+                            if (allSelected) {
+                                selectedLinks = emptySet()
+                            } else {
+                                selectedLinks = uiState.favoriteLinks.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = "Select all",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            shareMultipleLinks(context, uiState.favoriteLinks.filter { selectedLinks.contains(it.id) })
+                            isSelectionMode = false
+                            selectedLinks = emptySet()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+            )
+        } else {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "Favorites",
+                    actions = {
+                        IconButton(onClick = { viewModel.toggleViewMode() }) {
+                            Icon(
+                                imageVector = if (uiState.isGridView)
+                                    Icons.AutoMirrored.Filled.ViewList
+                                else
+                                    Icons.Default.GridView,
+                                contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                )
+            )
+        }
+    }
 
     // Event handling
     LaunchedEffect(Unit) {
@@ -115,55 +208,7 @@ fun FavoritesScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            topBar = {
-                if (isSelectionMode) {
-                    SelectionTopBar(
-                        selectedCount = selectedLinks.size,
-                        totalCount = uiState.favoriteLinks.size,
-                        allSelected = selectedLinks.size == uiState.favoriteLinks.size,
-                        favoriteStatus = favoriteStatus,
-                        onClose = { exitSelectionMode() },
-                        onSelectAll = { handleSelectAll() },
-                        onShare = {
-                            shareMultipleLinks(context, selectedLinksData)
-                            exitSelectionMode()
-                        },
-                        onFavorite = {
-                            viewModel.toggleFavoriteMultiple(selectedLinks.toList())
-                            exitSelectionMode()
-                        },
-                        onDelete = {
-                            showDeleteDialog = true
-                        }
-                    )
-                } else {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Favorites",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        actions = {
-                            IconButton(onClick = { viewModel.toggleViewMode() }) {
-                                Icon(
-                                    imageVector = if (uiState.isGridView)
-                                        Icons.AutoMirrored.Filled.ViewList
-                                    else
-                                        Icons.Default.GridView,
-                                    contentDescription = if (uiState.isGridView) "List View" else "Grid View",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background
-                        )
-                    )
-                }
-            },
+            topBar = {},
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Box(

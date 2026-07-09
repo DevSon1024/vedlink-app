@@ -157,7 +157,7 @@ fun AboutScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Smart Link Manager • $versionText",
+                            text = "$versionText",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

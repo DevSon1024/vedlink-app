@@ -48,6 +48,8 @@ import androidx.core.view.WindowCompat
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SavedLinksScreen(
+    isActive: Boolean = false,
+    onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
     onNavigateToDetails: (linkId: Int, linkIds: List<Int>) -> Unit,
     viewModel: SavedLinksViewModel = hiltViewModel()
 ) {
@@ -60,6 +62,8 @@ fun SavedLinksScreen(
     var isSelectionMode by rememberSaveable { mutableStateOf(false) }
     var selectedLinksList by rememberSaveable { mutableStateOf<List<Int>>(emptyList()) }
     var selectedLinks by remember(selectedLinksList) { mutableStateOf(selectedLinksList.toSet()) }
+
+
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -118,69 +122,99 @@ fun SavedLinksScreen(
     val selectedLinksData = uiState.links.filter { it.id in selectedLinks }
     val favoriteStatus = getFavoriteStatus(selectedLinksData)
 
+    LaunchedEffect(isActive) {
+        if (!isActive && isSelectionMode) {
+            exitSelectionMode()
+        }
+    }
+
+    LaunchedEffect(isActive, isSelectionMode, selectedLinksList, uiState.links.size) {
+        if (!isActive) return@LaunchedEffect
+        if (isSelectionMode) {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "${selectedLinksList.size} Selected",
+                    navigationIcon = {
+                        IconButton(onClick = { exitSelectionMode() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                        }
+                    },
+                    actions = {
+                        val allSelected = selectedLinksList.size == uiState.links.size
+                        IconButton(onClick = { handleSelectAll() }) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = "Select all",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.toggleFavoriteMultiple(selectedLinksList.toList())
+                            exitSelectionMode()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            shareMultipleLinks(context, selectedLinksData)
+                            exitSelectionMode()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+            )
+        } else {
+            onUpdateTopBarConfig(
+                com.devson.vedlink.ui.presentation.components.TopBarConfig(
+                    title = "Saved Links",
+                    actions = {
+                        IconButton(onClick = { viewModel.refreshMetadata() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh metadata",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { viewModel.toggleSearchActive() }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showViewSettings = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DisplaySettings,
+                                contentDescription = "View settings",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                )
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 Column {
-                    if (isSelectionMode) {
-                        SelectionTopBar(
-                            selectedCount = selectedLinks.size,
-                            totalCount = uiState.links.size,
-                            allSelected = selectedLinks.size == uiState.links.size,
-                            favoriteStatus = favoriteStatus,
-                            onClose = { exitSelectionMode() },
-                            onSelectAll = { handleSelectAll() },
-                            onShare = {
-                                shareMultipleLinks(context, selectedLinksData)
-                                exitSelectionMode()
-                            },
-                            onFavorite = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.toggleFavoriteMultiple(selectedLinks.toList())
-                                exitSelectionMode()
-                            },
-                            onDelete = { showDeleteDialog = true }
-                        )
-                    } else {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = "Saved Links",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            },
-                            actions = {
-                                IconButton(onClick = { viewModel.refreshMetadata() }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Refresh metadata",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(onClick = { viewModel.toggleSearchActive() }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "Search",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                // New: View Settings icon replaces old Grid/List toggle
-                                IconButton(onClick = { showViewSettings = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.DisplaySettings,
-                                        contentDescription = "View settings",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background
-                            )
-                        )
-                    }
-
                     AnimatedVisibility(visible = uiState.isSearchActive && !isSelectionMode) {
                         SearchBar(
                             query = uiState.searchQuery,

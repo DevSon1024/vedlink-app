@@ -48,3 +48,9 @@ fun VedLinkTopAppBar(
         windowInsets = WindowInsets.statusBars
     )
 }
+
+data class TopBarConfig(
+    val title: String = "VedLink",
+    val navigationIcon: @Composable () -> Unit = {},
+    val actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}
+)
