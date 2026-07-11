@@ -2,18 +2,17 @@ package com.devson.vedlink.ui.presentation.components
 
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -34,13 +34,13 @@ import com.devson.vedlink.domain.model.ScrapedMetadata
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +62,7 @@ fun EnhancedAddLinkBottomSheet(
     var isValidUrl by remember { mutableStateOf(true) }
     var showRecentLinks by remember { mutableStateOf(true) }
 
-    // 1. Setup state and scope for animation
+    // Setup state and scope for animation
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     
@@ -98,8 +98,8 @@ fun EnhancedAddLinkBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState, // 2. Pass state to sheet
-        shape = MaterialTheme.shapes.medium.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)),
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         containerColor = Color.Transparent,
         dragHandle = null
     ) {
@@ -111,9 +111,9 @@ fun EnhancedAddLinkBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 32.dp),
-                shape = MaterialTheme.shapes.medium.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 2.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -131,7 +131,10 @@ fun EnhancedAddLinkBottomSheet(
                     ) {
                         Text(
                             text = "Add New Link",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.5).sp
+                            ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
@@ -163,7 +166,7 @@ fun EnhancedAddLinkBottomSheet(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Input Field
+                    // Input Field with premium rounded shape
                     OutlinedTextField(
                         value = localUrl,
                         onValueChange = {
@@ -216,7 +219,7 @@ fun EnhancedAddLinkBottomSheet(
                                 }
                             }
                         ),
-                        shape = MaterialTheme.shapes.extraSmall,
+                        shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -260,7 +263,7 @@ fun EnhancedAddLinkBottomSheet(
                             .fillMaxWidth()
                             .height(56.dp),
                         enabled = localUrl.isNotBlank(),
-                        shape = MaterialTheme.shapes.extraSmall,
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -273,7 +276,7 @@ fun EnhancedAddLinkBottomSheet(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Add Link",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                     }
 
@@ -288,7 +291,7 @@ fun EnhancedAddLinkBottomSheet(
                         ) {
                             Text(
                                 text = "Recent ${recentLinks.size} Links",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
@@ -318,7 +321,6 @@ fun EnhancedAddLinkBottomSheet(
             // Close FAB - Animates from Add (Plus) to Close (X)
             FloatingActionButton(
                 onClick = {
-                    // 3. Trigger close animation, then dismiss
                     previewMetadata = null
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) {
@@ -338,11 +340,11 @@ fun EnhancedAddLinkBottomSheet(
                 shape = CircleShape
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add, // Starts as Add (+)
+                    imageVector = Icons.Default.Add,
                     contentDescription = "Close",
                     modifier = Modifier
                         .size(32.dp)
-                        .rotate(rotation) // Rotates to 45 degrees (becoming X)
+                        .rotate(rotation)
                 )
             }
         }
@@ -371,9 +373,9 @@ private fun CustomDragHandle() {
 private fun RecentLinkItem(link: Link) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraSmall,
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -404,7 +406,7 @@ private fun RecentLinkItem(link: Link) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = link.title ?: "No Title",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
@@ -451,9 +453,9 @@ fun LinkPreviewCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraSmall,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Row(
@@ -466,47 +468,83 @@ fun LinkPreviewCard(
                     model = metadata.imageUrl,
                     contentDescription = null,
                     modifier = Modifier
-                        .width(80.dp)
-                        .fillMaxHeight(),
+                        .width(100.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .size(100.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = null,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(36.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
             }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(12.dp)
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                verticalArrangement = Arrangement.Center
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!metadata.faviconUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = metadata.faviconUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = metadata.websiteName ?: extractDomain(metadata.imageUrl ?: ""),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = metadata.title ?: "No Title",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = metadata.description ?: "No description available",
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+    }
+}
+
+private fun extractDomain(url: String): String {
+    return try {
+        val uri = java.net.URI(url)
+        uri.host?.removePrefix("www.") ?: url
+    } catch (e: Exception) {
+        url
     }
 }
 
@@ -535,18 +573,18 @@ fun LinkPreviewSkeleton(modifier: Modifier = Modifier) {
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraSmall,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .height(100.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .width(80.dp)
+                    .width(100.dp)
                     .fillMaxHeight()
                     .background(shimmerBrush)
             )

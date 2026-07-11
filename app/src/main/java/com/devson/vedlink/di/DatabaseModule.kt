@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.devson.vedlink.data.local.dao.LinkDao
 import com.devson.vedlink.data.local.dao.FolderDao
+import com.devson.vedlink.data.local.dao.SearchTopicDao
 import com.devson.vedlink.data.local.database.VedLinkDatabase
 import dagger.Module
 import dagger.Provides
@@ -42,5 +43,11 @@ object DatabaseModule {
     @Singleton
     fun provideFolderDao(database: VedLinkDatabase): FolderDao {
         return database.folderDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSearchTopicDao(database: VedLinkDatabase): SearchTopicDao {
+        return database.searchTopicDao()
     }
 }

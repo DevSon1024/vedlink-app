@@ -62,6 +62,7 @@ fun HomeScreen(
     onNavigateToFolders: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToSearchTopics: () -> Unit = {},
     onNavigateToDetails: (Int) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -221,31 +222,47 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            ActionCard(
-                                modifier = Modifier.weight(1f),
-                                icon = Icons.Default.FolderOpen,
-                                title = "Folders",
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                onClick = onNavigateToFolders
-                            )
-                            ActionCard(
-                                modifier = Modifier.weight(1f),
-                                icon = Icons.Default.StarOutline,
-                                title = "Favorites",
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                onClick = onNavigateToFavorites
-                            )
-                            ActionCard(
-                                modifier = Modifier.weight(1f),
-                                icon = Icons.AutoMirrored.Filled.ManageSearch,
-                                title = "Search",
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                onClick = onNavigateToSavedLinks
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                ActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.Default.FolderOpen,
+                                    title = "Folders",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    onClick = onNavigateToFolders
+                                )
+                                ActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.Default.StarOutline,
+                                    title = "Favorites",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    onClick = onNavigateToFavorites
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                ActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.AutoMirrored.Filled.ManageSearch,
+                                    title = "Search",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    onClick = onNavigateToSavedLinks
+                                )
+                                ActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.Default.Lightbulb,
+                                    title = "Topics",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    onClick = onNavigateToSearchTopics
+                                )
+                            }
                         }
                     }
                 }

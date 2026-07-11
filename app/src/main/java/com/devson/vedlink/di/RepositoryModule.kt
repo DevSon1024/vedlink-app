@@ -2,8 +2,10 @@ package com.devson.vedlink.di
 
 import com.devson.vedlink.data.repository.LinkRepositoryImpl
 import com.devson.vedlink.data.repository.FolderRepositoryImpl
+import com.devson.vedlink.data.repository.SearchTopicRepositoryImpl
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.repository.FolderRepository
+import com.devson.vedlink.domain.repository.SearchTopicRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindFolderRepository(
         folderRepositoryImpl: FolderRepositoryImpl
     ): FolderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSearchTopicRepository(
+        searchTopicRepositoryImpl: SearchTopicRepositoryImpl
+    ): SearchTopicRepository
 }

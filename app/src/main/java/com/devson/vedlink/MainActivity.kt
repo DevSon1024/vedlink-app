@@ -28,7 +28,9 @@ import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.network.scraper.MetadataPipeline
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
+import com.devson.vedlink.domain.usecase.AddSearchTopicUseCase
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
+import com.devson.vedlink.ui.presentation.components.ExpandableMultiFab
 import com.devson.vedlink.ui.presentation.components.VedLinkBottomNavBar
 import com.devson.vedlink.ui.presentation.navigation.NavGraph
 import com.devson.vedlink.ui.presentation.navigation.Screen
@@ -38,6 +40,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 data class NavigationItem(
     val route: String,
@@ -60,6 +64,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var metadataPipeline: MetadataPipeline
+
+    @Inject
+    lateinit var addSearchTopicUseCase: AddSearchTopicUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +104,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 val snackbarHostState = remember { SnackbarHostState() }
                 var showAddDialog by remember { mutableStateOf(false) }
+                var showAddTopicDialog by remember { mutableStateOf(false) }
 
                 val pagerState = rememberPagerState(pageCount = { 5 })
                 val mainPages = remember {
@@ -171,25 +179,14 @@ class MainActivity : ComponentActivity() {
                                 Screen.Favorites.route
                             )
                             AnimatedVisibility(
-                                visible = showFAB && !showAddDialog,
+                                visible = showFAB && !showAddDialog && !showAddTopicDialog,
                                 enter = scaleIn(animationSpec = tween(durationMillis = 400)) + fadeIn(),
                                 exit = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut()
                             ) {
-                                FloatingActionButton(
-                                    onClick = { showAddDialog = true },
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .shadow(12.dp, CircleShape),
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    shape = CircleShape
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Add,
-                                        contentDescription = "Add Link",
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
+                                ExpandableMultiFab(
+                                    onAddLinkClick = { showAddDialog = true },
+                                    onAddTopicClick = { showAddTopicDialog = true }
+                                )
                             }
                         }
                     ) { paddingValues ->
@@ -206,6 +203,71 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                    }
+
+                    if (showAddTopicDialog) {
+                        var topicQuery by remember { mutableStateOf("") }
+                        AlertDialog(
+                            onDismissRequest = {
+                                showAddTopicDialog = false
+                                topicQuery = ""
+                            },
+                            title = {
+                                Text(
+                                    text = "Save Search Topic",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                            },
+                            text = {
+                                OutlinedTextField(
+                                    value = topicQuery,
+                                    onValueChange = { topicQuery = it },
+                                    label = { Text("Topic or Keyword") },
+                                    placeholder = { Text("Type query to search later...") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Lightbulb,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val queryToSave = topicQuery.trim()
+                                        if (queryToSave.isNotBlank()) {
+                                            scope.launch {
+                                                try {
+                                                    addSearchTopicUseCase(queryToSave)
+                                                    snackbarHostState.showSnackbar("Topic saved offline")
+                                                } catch (e: Exception) {
+                                                    snackbarHostState.showSnackbar("Error: ${e.message}")
+                                                }
+                                            }
+                                            showAddTopicDialog = false
+                                            topicQuery = ""
+                                        }
+                                    }
+                                ) {
+                                    Text("Save")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = {
+                                        showAddTopicDialog = false
+                                        topicQuery = ""
+                                    }
+                                ) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
                     }
 
                     // Unified Add Link Dialog Interface

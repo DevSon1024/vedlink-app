@@ -47,6 +47,7 @@ import com.devson.vedlink.domain.model.Folder
 import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
+import com.devson.vedlink.ui.presentation.components.FolderViewSettingsBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import com.devson.vedlink.ui.presentation.components.MicroLinkCard
 import kotlinx.coroutines.flow.collectLatest
@@ -306,7 +307,8 @@ fun FoldersScreen(
                     )
                 }
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -535,17 +537,15 @@ fun FoldersScreen(
         }
 
         if (showViewSettings) {
-            ModalBottomSheet(
-                onDismissRequest = { showViewSettings = false },
-                sheetState = rememberModalBottomSheetState()
-            ) {
-                FoldersViewSettingsMenu(
-                    gridCellsCount = uiState.gridCellsCount,
-                    sortOrder = uiState.sortOrder,
-                    onGridCellsCountChange = { viewModel.setGridCellsCount(it) },
-                    onSortOrderChange = { viewModel.setSortOrder(it) }
-                )
-            }
+            FolderViewSettingsBottomSheet(
+                layoutMode = uiState.layoutMode,
+                onLayoutModeChange = { viewModel.setFolderLayoutMode(it) },
+                gridColumns = uiState.gridColumns,
+                onGridColumnsChange = { viewModel.setFolderGridColumns(it) },
+                sortOrder = uiState.sortOrder,
+                onSortOrderChange = { viewModel.setSortOrder(it) },
+                onDismiss = { showViewSettings = false }
+            )
         }
 
         SnackbarHost(
@@ -972,133 +972,6 @@ fun EmptyFoldersState(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-fun FoldersViewSettingsMenu(
-    gridCellsCount: Int,
-    sortOrder: String,
-    onGridCellsCountChange: (Int) -> Unit,
-    onSortOrderChange: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 32.dp, start = 24.dp, end = 24.dp, top = 8.dp)
-    ) {
-        Text(
-            text = "View Settings",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-
-        Text(
-            text = "Layout",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Slider(
-                value = gridCellsCount.toFloat(),
-                onValueChange = { onGridCellsCountChange(it.toInt()) },
-                valueRange = 1f..6f,
-                steps = 4,
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                listOf("List", "2", "3", "4", "5", "6").forEach { label ->
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "Sort Folders (A-Z)",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FoldersSortChip(
-                label = "A - Z",
-                selected = sortOrder == "ASC",
-                onClick = { onSortOrderChange("ASC") },
-                modifier = Modifier.weight(1f)
-            )
-            FoldersSortChip(
-                label = "Z - A",
-                selected = sortOrder == "DESC",
-                onClick = { onSortOrderChange("DESC") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun FoldersSortChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = containerColor,
-        tonalElevation = if (selected) 0.dp else 1.dp
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = contentColor
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = contentColor
-            )
-        }
     }
 }
 

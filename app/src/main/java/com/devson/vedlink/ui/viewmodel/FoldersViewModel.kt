@@ -24,6 +24,8 @@ data class FoldersUiState(
     val linksByDomain: Map<String, List<Link>> = emptyMap(),
     val linksByFolderId: Map<Int?, List<Link>> = emptyMap(),
     val isLoading: Boolean = false,
+    val layoutMode: String = "list",
+    val gridColumns: Int = 2,
     val gridCellsCount: Int = 2,
     val sortOrder: String = "ASC",
     val isPrefsLoaded: Boolean = false,
@@ -61,8 +63,19 @@ class FoldersViewModel @Inject constructor(
 
     private fun loadPreferences() {
         viewModelScope.launch {
-            themePreferences.folderGridCellsCount.collect { count ->
-                _uiState.update { it.copy(gridCellsCount = count) }
+            combine(
+                themePreferences.folderLayoutMode,
+                themePreferences.folderGridColumns
+            ) { mode, cols ->
+                Pair(mode, cols)
+            }.collect { (mode, cols) ->
+                _uiState.update {
+                    it.copy(
+                        layoutMode = mode,
+                        gridColumns = cols,
+                        gridCellsCount = if (mode.equals("list", ignoreCase = true)) 1 else cols
+                    )
+                }
                 if (!_uiState.value.isPrefsLoaded) {
                     _uiState.update { it.copy(isPrefsLoaded = true) }
                 }
@@ -94,6 +107,18 @@ class FoldersViewModel @Inject constructor(
     fun setGridCellsCount(count: Int) {
         viewModelScope.launch {
             themePreferences.setFolderGridCellsCount(count)
+        }
+    }
+
+    fun setFolderLayoutMode(mode: String) {
+        viewModelScope.launch {
+            themePreferences.setFolderLayoutMode(mode)
+        }
+    }
+
+    fun setFolderGridColumns(columns: Int) {
+        viewModelScope.launch {
+            themePreferences.setFolderGridColumns(columns)
         }
     }
 

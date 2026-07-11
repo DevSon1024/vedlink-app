@@ -139,6 +139,7 @@ fun NavGraph(
                             onNavigateToFolders = { scope.launch { pagerState.animateScrollToPage(2) } },
                             onNavigateToFavorites = { scope.launch { pagerState.animateScrollToPage(3) } },
                             onNavigateToSettings = { scope.launch { pagerState.animateScrollToPage(4) } },
+                            onNavigateToSearchTopics = { navController.navigate(Screen.SearchTopics.route) },
                             onNavigateToDetails = onNavigateToDetails
                         )
                         1 -> SavedLinksScreen(
@@ -180,6 +181,10 @@ fun NavGraph(
 
         composable(Screen.CustomizeHome.route) {
             CustomizeHomeScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.SearchTopics.route) {
+            SearchTopicsScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // Legacy single-link details (kept for back-compat from FavoritesScreen / FoldersScreen)

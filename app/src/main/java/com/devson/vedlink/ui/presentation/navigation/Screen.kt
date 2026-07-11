@@ -9,6 +9,7 @@ sealed class Screen(val route: String) {
     object About : Screen("about")
     object Appearance : Screen("appearance")
     object CustomizeHome : Screen("customize_home")
+    object SearchTopics : Screen("search_topics")
 
     // Legacy single-link details route kept for back-compat from HomeScreen / FavoritesScreen
     object LinkDetails : Screen("link_details/{linkId}") {

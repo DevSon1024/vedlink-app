@@ -45,6 +45,8 @@ class ThemePreferences @Inject constructor(
     // Folder View Settings preferences
     private val FOLDER_GRID_CELLS_COUNT_KEY = intPreferencesKey("folder_grid_cells_count")
     private val FOLDER_SORT_ORDER_KEY = stringPreferencesKey("folder_sort_order")
+    private val FOLDER_LAYOUT_MODE_KEY = stringPreferencesKey("folder_layout_mode")
+    private val FOLDER_GRID_COLUMNS_KEY = intPreferencesKey("folder_grid_columns")
 
     // Home section visibility preferences
     private val HOME_SHOW_STATS_KEY = booleanPreferencesKey("home_show_stats")
@@ -114,6 +116,14 @@ class ThemePreferences @Inject constructor(
     /** Sort order for folders. "ASC" = A-Z, "DESC" = Z-A. */
     val folderSortOrder: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[FOLDER_SORT_ORDER_KEY] ?: "ASC" // Default A-Z
+    }
+
+    val folderLayoutMode: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[FOLDER_LAYOUT_MODE_KEY] ?: "list"
+    }
+
+    val folderGridColumns: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[FOLDER_GRID_COLUMNS_KEY] ?: 2).coerceIn(2, 4)
     }
 
     // Home section visibility flows
@@ -219,6 +229,18 @@ class ThemePreferences @Inject constructor(
     suspend fun setFolderSortOrder(order: String) {
         context.dataStore.edit { preferences ->
             preferences[FOLDER_SORT_ORDER_KEY] = if (order == "DESC") "DESC" else "ASC"
+        }
+    }
+
+    suspend fun setFolderLayoutMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[FOLDER_LAYOUT_MODE_KEY] = mode
+        }
+    }
+
+    suspend fun setFolderGridColumns(columns: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[FOLDER_GRID_COLUMNS_KEY] = columns.coerceIn(2, 4)
         }
     }
 

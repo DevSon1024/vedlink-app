@@ -27,8 +27,8 @@ android {
         applicationId = "com.devson.vedlink"
         minSdk = 26
         targetSdk = 35
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 103
+        versionName = "1.0.3"
 
         vectorDrawables {
             useSupportLibrary = true
