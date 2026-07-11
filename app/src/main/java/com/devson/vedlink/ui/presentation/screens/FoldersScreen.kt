@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -582,6 +583,7 @@ fun DomainsView(
             items(items = folders, key = { it.domain }) { folder ->
                 FolderGridCard(
                     folder = folder,
+                    gridCellsCount = gridCellsCount,
                     onClick = { onDomainClick(folder.domain) }
                 )
             }
@@ -800,11 +802,22 @@ fun CustomFoldersView(
 @Composable
 fun FolderGridCard(
     folder: FolderItem,
-    onClick: () -> Unit
+    gridCellsCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val isDense = gridCellsCount >= 4
+    val iconSize = if (isDense) 32.dp else 48.dp
+    val iconPadding = if (isDense) 4.dp else 8.dp
+    val contentPadding = if (isDense) 6.dp else 10.dp
+    val spacerHeight = if (isDense) 4.dp else 10.dp
+    val titleStyle = if (isDense) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+    val subtitleStyle = if (isDense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall
+
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .aspectRatio(0.95f)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -813,39 +826,39 @@ fun FolderGridCard(
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+                .padding(contentPadding)
+                .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(folder.favicon ?: "https://www.google.com/s2/favicons?domain=${folder.rawDomain.lowercase()}&sz=128")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(iconSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(iconPadding),
+                contentScale = ContentScale.Fit,
+                error = rememberVectorPainter(Icons.Default.Folder),
+                fallback = rememberVectorPainter(Icons.Default.Folder)
+            )
+            Spacer(modifier = Modifier.height(spacerHeight))
             Text(
                 text = getCleanDomainName(folder.domain),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                style = titleStyle,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "${folder.linkCount} links",
-                style = MaterialTheme.typography.bodySmall,
+                style = subtitleStyle,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
@@ -881,11 +894,18 @@ fun FolderListCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(folder.favicon ?: "https://www.google.com/s2/favicons?domain=${folder.rawDomain.lowercase()}&sz=128")
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Fit,
+                error = rememberVectorPainter(if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder),
+                fallback = rememberVectorPainter(if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

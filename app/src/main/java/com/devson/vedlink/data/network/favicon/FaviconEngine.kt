@@ -28,10 +28,18 @@ class FaviconEngine @Inject constructor(
      * Returns the absolute path of the locally stored file, or null if it fails.
      */
     suspend fun getOrFetchFavicon(urlStr: String): String? = withContext(Dispatchers.IO) {
-        val host = try {
+        var host = try {
             URI(urlStr).host?.lowercase() ?: return@withContext null
         } catch (e: Exception) {
             return@withContext null
+        }
+
+        // Avoid cache collision for Google Favicon API calls by extracting the target domain
+        if (host.contains("google.com") && urlStr.contains("domain=")) {
+            val queryHost = urlStr.substringAfter("domain=").substringBefore("&").lowercase()
+            if (queryHost.isNotBlank()) {
+                host = queryHost
+            }
         }
 
         // Check L2 local cache first
@@ -60,6 +68,12 @@ class FaviconEngine @Inject constructor(
     }
 
     private fun discoverFaviconUrls(pageUrl: String, host: String): List<String> {
+        if (host.contains("instagram.com")) {
+            return listOf(
+                "https://www.instagram.com/favicon.ico",
+                "https://www.google.com/s2/favicons?domain=instagram.com&sz=128"
+            )
+        }
         val urls = mutableListOf<String>()
         try {
             val doc = Jsoup.connect(pageUrl)

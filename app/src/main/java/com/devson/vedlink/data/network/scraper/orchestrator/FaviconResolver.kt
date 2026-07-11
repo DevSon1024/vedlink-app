@@ -9,6 +9,9 @@ import javax.inject.Singleton
 class FaviconResolver @Inject constructor() {
 
     fun resolveFavicon(url: String, document: Document?): String {
+        if (url.contains("instagram.com", ignoreCase = true) || url.contains("instagr.am", ignoreCase = true)) {
+            return "https://www.google.com/s2/favicons?sz=128&domain=instagram.com"
+        }
         if (document != null) {
             // 1. Apple Touch Icon
             val appleTouch = document.select("link[rel=apple-touch-icon], link[rel=apple-touch-icon-precomposed]").firstOrNull()?.attr("href")

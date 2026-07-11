@@ -14,6 +14,7 @@ import javax.inject.Inject
 
 data class FolderItem(
     val domain: String,
+    val rawDomain: String,
     val linkCount: Int,
     val favicon: String? = null
 )
@@ -139,9 +140,13 @@ class FoldersViewModel @Inject constructor(
                 }
 
                 var domainFolders = linksByDomain.map { (domain, domainLinks) ->
+                    val firstFavicon = domainLinks.firstOrNull { !it.faviconUrl.isNullOrBlank() }?.faviconUrl
+                    val rawDomain = domainLinks.firstOrNull()?.domain ?: domain
                     FolderItem(
                         domain = domain,
-                        linkCount = domainLinks.size
+                        rawDomain = rawDomain,
+                        linkCount = domainLinks.size,
+                        favicon = firstFavicon
                     )
                 }
 
