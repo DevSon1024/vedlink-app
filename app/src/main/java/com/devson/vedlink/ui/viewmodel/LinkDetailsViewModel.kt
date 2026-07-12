@@ -18,7 +18,10 @@ data class LinkDetailsUiState(
     val link: Link? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val showQrCodeDialog: Boolean = false
+    val showQrCodeDialog: Boolean = false,
+    val readabilityText: String? = null,
+    val isReadingModeActive: Boolean = false,
+    val isExtractingReaderText: Boolean = false
 )
 
 @HiltViewModel
@@ -156,5 +159,34 @@ class LinkDetailsViewModel @Inject constructor(
 
     fun showQrCodeDialog(show: Boolean) {
         _uiState.update { it.copy(showQrCodeDialog = show) }
+    }
+
+    fun extractReadabilityText(url: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExtractingReaderText = true, isReadingModeActive = true) }
+            kotlinx.coroutines.delay(1000)
+            _uiState.update {
+                it.copy(
+                    isExtractingReaderText = false,
+                    readabilityText = """
+                        Reader View Mode
+                        URL: ${url}
+                        
+                        This is a reader-friendly representation of the web article. Readability mode strips away extraneous styling, advertisements, layout constraints, and script elements to expose clean text optimized for user reading.
+                        
+                        The backend text extraction logic can be integrated into the LinkDetailsViewModel by parsing the document body or utilizing a custom scraper here.
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
+    fun exitReadingMode() {
+        _uiState.update {
+            it.copy(
+                isReadingModeActive = false,
+                readabilityText = null
+            )
+        }
     }
 }

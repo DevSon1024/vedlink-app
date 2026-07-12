@@ -195,8 +195,9 @@ fun NavGraph(
             arguments = listOf(navArgument("linkId") { type = NavType.IntType })
         ) { backStackEntry ->
             val linkId = backStackEntry.arguments?.getInt("linkId") ?: return@composable
-            LinkDetailsScreen(
-                linkId = linkId,
+            LinkDetailsPagerScreen(
+                initialLinkId = linkId,
+                linkIds = listOf(linkId),
                 onNavigateBack = { navController.popBackStack() }
             )
         }
