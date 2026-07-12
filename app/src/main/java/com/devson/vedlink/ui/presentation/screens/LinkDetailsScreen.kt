@@ -8,7 +8,14 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import android.graphics.Bitmap
+import android.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -73,6 +81,8 @@ fun LinkDetailsScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showImageDialog by remember { mutableStateOf(false) }
+    var showUrlActionsSheet by remember { mutableStateOf(false) }
+    var showEditUrlDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(linkId) {
         viewModel.loadLink(linkId)
@@ -110,6 +120,14 @@ fun LinkDetailsScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.showQrCodeDialog(true) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCode,
+                            contentDescription = "QR Code"
+                        )
+                    }
                     IconButton(
                         onClick = { viewModel.toggleFavorite() }
                     ) {
@@ -446,19 +464,16 @@ fun LinkDetailsScreen(
                                 .padding(horizontal = 16.dp)
                                 .clip(urlShape)
                                 .combinedClickable(
-                                    onClick = {},
-                                    onLongClick = {
-                                        copyToClipboard(
-                                            clipboardManager,
-                                            context,
-                                            link.url,
-                                            "URL"
-                                        )
-                                    }
+                                    onClick = { showUrlActionsSheet = true },
+                                    onLongClick = { showUrlActionsSheet = true }
                                 ),
                             shape = urlShape,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                             )
                         ) {
                             Row(
@@ -480,6 +495,13 @@ fun LinkDetailsScreen(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit or copy URL",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -800,6 +822,171 @@ fun LinkDetailsScreen(
             }
         }
     }
+
+    // URL Actions Bottom Sheet
+    if (showUrlActionsSheet && uiState.link != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showUrlActionsSheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Text(
+                    text = "Link Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                ListItem(
+                    headlineContent = { Text("Copy Link") },
+                    leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        copyToClipboard(
+                            clipboardManager,
+                            context,
+                            uiState.link!!.url,
+                            "URL"
+                        )
+                        showUrlActionsSheet = false
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Edit Link") },
+                    leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        showUrlActionsSheet = false
+                        showEditUrlDialog = true
+                    }
+                )
+            }
+        }
+    }
+
+    // Edit URL Dialog
+    if (showEditUrlDialog && uiState.link != null) {
+        val originalUrl = uiState.link!!.url
+        var urlInput by remember { mutableStateOf(originalUrl) }
+        var isError by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showEditUrlDialog = false },
+            title = { Text("Edit Link URL") },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = {
+                            urlInput = it
+                            isError = it.isBlank()
+                        },
+                        label = { Text("URL") },
+                        isError = isError,
+                        supportingText = {
+                            if (isError) {
+                                Text("URL cannot be empty", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        trailingIcon = {
+                            if (urlInput != originalUrl) {
+                                IconButton(
+                                    onClick = { urlInput = originalUrl }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Undo,
+                                        contentDescription = "Reset to Original"
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 4
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (urlInput.isNotBlank()) {
+                            viewModel.updateUrl(urlInput)
+                            showEditUrlDialog = false
+                        } else {
+                            isError = true
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditUrlDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // QR Code Dialog
+    if (uiState.showQrCodeDialog && uiState.link != null) {
+        val qrBitmap = remember(uiState.link!!.url) {
+            generateQrCode(uiState.link!!.url, 512)
+        }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.showQrCodeDialog(false) },
+            title = {
+                Text(
+                    text = "QR Code",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    if (qrBitmap != null) {
+                        Image(
+                            bitmap = qrBitmap.asImageBitmap(),
+                            contentDescription = "QR Code for Link URL",
+                            modifier = Modifier
+                                .size(240.dp)
+                                .padding(8.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(240.dp)
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Failed to generate QR Code")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.link!!.url,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.showQrCodeDialog(false) }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
 }
 
 @Composable
@@ -945,4 +1132,26 @@ private suspend fun downloadImage(
 private fun formatFullDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+private fun generateQrCode(text: String, size: Int = 512): Bitmap? {
+    return try {
+        val bitMatrix = com.google.zxing.MultiFormatWriter().encode(
+            text,
+            com.google.zxing.BarcodeFormat.QR_CODE,
+            size,
+            size
+        )
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (bitMatrix.get(x, y)) Color.BLACK else Color.WHITE)
+            }
+        }
+        bitmap
+    } catch (e: Exception) {
+        null
+    }
 }

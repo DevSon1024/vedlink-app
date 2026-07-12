@@ -32,95 +32,46 @@ fun LinkDetailsPagerScreen(
     )
     val scope = rememberCoroutineScope()
 
-    // Gesture disambiguation NestedScrollConnection
-    val gestureConnection = remember {
-        object : NestedScrollConnection {
-            // Track cumulative drag per gesture to decide direction
-            var cumulativeX = 0f
-            var cumulativeY = 0f
-            var gestureDecided = false
-            var isHorizontalGesture = false
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source != NestedScrollSource.UserInput) return Offset.Zero
-
-                cumulativeX += abs(available.x)
-                cumulativeY += abs(available.y)
-
-                if (!gestureDecided && (cumulativeX > 4f || cumulativeY > 4f)) {
-                    // Require strictly horizontal: |X| > 1.5 × |Y|
-                    isHorizontalGesture = cumulativeX > cumulativeY * 1.5f
-                    gestureDecided = true
-                }
-
-                // Only consume horizontal scroll if gesture is horizontal
-                return if (isHorizontalGesture) available else Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                // Reset per-gesture tracking when motion stops
-                if (available == Offset.Zero && consumed == Offset.Zero) {
-                    cumulativeX = 0f
-                    cumulativeY = 0f
-                    gestureDecided = false
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                cumulativeX = 0f
-                cumulativeY = 0f
-                gestureDecided = false
-                return if (isHorizontalGesture) available else Velocity.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                isHorizontalGesture = false
-                return Velocity.Zero
-            }
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         //  Pager 
-            HorizontalPager(
-                state = pagerState,
-                pageSize = PageSize.Fill,
-                beyondViewportPageCount = 1,          // Preload 1 adjacent page only
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(gestureConnection)
-            ) { pageIndex ->
-                val linkId = linkIds[pageIndex]
-                // Only actively load data when the page is settled or ±1 adjacent.
-                val shouldLoad = abs(pagerState.settledPage - pageIndex) <= 1
-
-                // Each page gets its own ViewModel instance keyed to linkId
-                val pageViewModel: LinkDetailsViewModel =
-                    hiltViewModel(key = "details_$linkId")
-
-                LaunchedEffect(linkId, shouldLoad) {
-                    if (shouldLoad) {
-                        pageViewModel.loadLink(linkId)
-                    }
+        HorizontalPager(
+            state = pagerState,
+            pageSize = PageSize.Fill,
+            beyondViewportPageCount = 1,          // Preload 1 adjacent page only
+            modifier = Modifier.fillMaxSize()
+        ) { pageIndex ->
+            val linkId = linkIds[pageIndex]
+            
+            // Only actively load data when the page is settled or ±1 adjacent.
+            // Use derivedStateOf to avoid recomposing the entire pager page when settledPage changes during swipes.
+            val shouldLoad by remember(pagerState) {
+                derivedStateOf {
+                    abs(pagerState.settledPage - pageIndex) <= 1
                 }
-
-                LinkDetailsScreen(
-                    linkId = linkId,
-                    onNavigateBack = onNavigateBack,
-                    viewModel = pageViewModel,
-                    pageText = "${pageIndex + 1} / ${linkIds.size}",
-                    onPreviousPage = if (pageIndex > 0) {
-                        { scope.launch { pagerState.animateScrollToPage(pageIndex - 1) } }
-                    } else null,
-                    onNextPage = if (pageIndex < linkIds.lastIndex) {
-                        { scope.launch { pagerState.animateScrollToPage(pageIndex + 1) } }
-                    } else null
-                )
             }
+
+            // Each page gets its own ViewModel instance keyed to linkId
+            val pageViewModel: LinkDetailsViewModel =
+                hiltViewModel(key = "details_$linkId")
+
+            LaunchedEffect(linkId, shouldLoad) {
+                if (shouldLoad) {
+                    pageViewModel.loadLink(linkId)
+                }
+            }
+
+            LinkDetailsScreen(
+                linkId = linkId,
+                onNavigateBack = onNavigateBack,
+                viewModel = pageViewModel,
+                pageText = "${pageIndex + 1} / ${linkIds.size}",
+                onPreviousPage = if (pageIndex > 0) {
+                    { scope.launch { pagerState.animateScrollToPage(pageIndex - 1) } }
+                } else null,
+                onNextPage = if (pageIndex < linkIds.lastIndex) {
+                    { scope.launch { pagerState.animateScrollToPage(pageIndex + 1) } }
+                } else null
+            )
         }
     }
+}

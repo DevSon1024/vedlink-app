@@ -188,6 +188,9 @@ dependencies {
     // WorkManager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    // QR Code generation
+    implementation("com.google.zxing:core:3.5.3")
+
     // Accompanist for system UI
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
 

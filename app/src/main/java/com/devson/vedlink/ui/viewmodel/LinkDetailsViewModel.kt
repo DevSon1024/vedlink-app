@@ -17,7 +17,8 @@ import javax.inject.Inject
 data class LinkDetailsUiState(
     val link: Link? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val showQrCodeDialog: Boolean = false
 )
 
 @HiltViewModel
@@ -130,5 +131,30 @@ class LinkDetailsViewModel @Inject constructor(
             updateLinkUseCase(updated)
             _uiState.update { it.copy(link = updated) }
         }
+    }
+
+    fun updateUrl(newUrl: String) {
+        val currentLink = _uiState.value.link ?: return
+        val trimmedUrl = newUrl.trim()
+        val domain = try {
+            val uri = java.net.URI(trimmedUrl)
+            uri.host?.removePrefix("www.") ?: currentLink.domain
+        } catch (e: Exception) {
+            currentLink.domain
+        }
+        val updated = currentLink.copy(
+            url = trimmedUrl,
+            canonicalUrl = trimmedUrl,
+            domain = domain,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
+        }
+    }
+
+    fun showQrCodeDialog(show: Boolean) {
+        _uiState.update { it.copy(showQrCodeDialog = show) }
     }
 }
