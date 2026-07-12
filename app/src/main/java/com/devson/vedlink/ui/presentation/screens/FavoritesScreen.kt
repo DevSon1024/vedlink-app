@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devson.vedlink.ui.presentation.components.CompactLinkCard
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.LinkCard
+import com.devson.vedlink.ui.presentation.components.MicroLinkCard
+import com.devson.vedlink.ui.presentation.components.LinkViewSettingsBottomSheet
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.devson.vedlink.ui.presentation.helper.*
@@ -54,6 +57,7 @@ fun FavoritesScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedLinks by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showViewSettings by remember { mutableStateOf(false) }
 
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
@@ -130,13 +134,10 @@ fun FavoritesScreen(
                 com.devson.vedlink.ui.presentation.components.TopBarConfig(
                     title = "Favorites",
                     actions = {
-                        IconButton(onClick = { viewModel.toggleViewMode() }) {
+                        IconButton(onClick = { showViewSettings = true }) {
                             Icon(
-                                imageVector = if (uiState.isGridView)
-                                    Icons.AutoMirrored.Filled.ViewList
-                                else
-                                    Icons.Default.GridView,
-                                contentDescription = if (uiState.isGridView) "List View" else "Grid View",
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = "View settings",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -211,10 +212,23 @@ fun FavoritesScreen(
             topBar = {},
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(top = paddingValues.calculateTopPadding())
             ) {
+                if (uiState.favoriteLinks.isNotEmpty() && !isSelectionMode) {
+                    ItemCountSection(
+                        itemCount = uiState.favoriteLinks.size,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
 
                 when {
                     uiState.isLoading -> {
@@ -228,125 +242,138 @@ fun FavoritesScreen(
                         )
                     }
                     else -> {
-                        AnimatedVisibility(
-                            visible = uiState.isGridView,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
+                        if (!uiState.isPrefsLoaded) {
+                            Box(modifier = Modifier.fillMaxSize())
+                        } else {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                                columns = GridCells.Fixed(uiState.gridCellsCount),
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
-                                    top = paddingValues.calculateTopPadding() + 8.dp,
+                                    top = 8.dp,
                                     bottom = 80.dp
                                 ),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(
-                                    items = uiState.favoriteLinks,
-                                    key = { it.id }
-                                ) { link ->
-                                    CompactLinkCard(
-                                        link = link,
-                                        onClick = {
-                                            if (isSelectionMode) {
-                                                handleSelectionClick(link.id)
-                                            } else {
-                                                onNavigateToDetails(link.id)
-                                            }
-                                        },
-                                        onLongPress = {
-                                            handleLongPress(link.id)
-                                        },
-                                        isSelected = selectedLinks.contains(link.id),
-                                        isSelectionMode = isSelectionMode,
-                                        onFavoriteClick = {
-                                            viewModel.toggleFavorite(link.id, link.isFavorite)
-                                        },
-                                        onCopyClick = {
-                                            copyToClipboard(context, link.url)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "Link copied to clipboard",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        },
-                                        onShareClick = {
-                                            shareLink(context, link.url, link.title)
-                                        },
-                                        onDeleteClick = {
-                                            viewModel.deleteLink(link)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        AnimatedVisibility(
-                            visible = !uiState.isGridView,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            LazyColumn(
-                                contentPadding = PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = paddingValues.calculateTopPadding() + 8.dp,
-                                    bottom = 80.dp
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    if (uiState.gridCellsCount == 1) 0.dp else 10.dp
                                 ),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(
+                                    if (uiState.gridCellsCount == 1) 12.dp else 10.dp
+                                ),
+                                modifier = Modifier.fillMaxSize()
                             ) {
-                                items(
+                                itemsIndexed(
                                     items = uiState.favoriteLinks,
-                                    key = { it.id }
-                                ) { link ->
-                                    LinkCard(
-                                        link = link,
-                                        onClick = {
-                                            if (isSelectionMode) {
-                                                handleSelectionClick(link.id)
-                                            } else {
-                                                onNavigateToDetails(link.id)
-                                            }
-                                        },
-                                        onLongPress = {
-                                            handleLongPress(link.id)
-                                        },
-                                        isSelected = selectedLinks.contains(link.id),
-                                        isSelectionMode = isSelectionMode,
-                                        onFavoriteClick = {
-                                            viewModel.toggleFavorite(link.id, link.isFavorite)
-                                        },
-                                        onMoreClick = {
-                                            viewModel.deleteLink(link)
-                                        },
-                                        onCopyClick = {
-                                            copyToClipboard(context, link.url)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "Link copied to clipboard",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        },
-                                        onShareClick = {
-                                            shareLink(context, link.url, link.title)
-                                        },
-                                        onDeleteClick = {
-                                            viewModel.deleteLink(link)
+                                    key = { index, link -> "${link.id}_$index" }
+                                ) { index, link ->
+                                    when {
+                                        uiState.gridCellsCount == 1 -> {
+                                            LinkCard(
+                                                modifier = Modifier.animateItem(),
+                                                link = link,
+                                                onClick = {
+                                                    if (isSelectionMode) {
+                                                        handleSelectionClick(link.id)
+                                                    } else {
+                                                        onNavigateToDetails(link.id)
+                                                    }
+                                                },
+                                                onLongPress = {
+                                                    handleLongPress(link.id)
+                                                },
+                                                isSelected = selectedLinks.contains(link.id),
+                                                isSelectionMode = isSelectionMode,
+                                                onFavoriteClick = {
+                                                    viewModel.toggleFavorite(link.id, link.isFavorite)
+                                                },
+                                                onMoreClick = {},
+                                                onCopyClick = {
+                                                    copyToClipboard(context, link.url)
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            message = "Link copied to clipboard",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                    }
+                                                },
+                                                onShareClick = {
+                                                    shareLink(context, link.url, link.title)
+                                                },
+                                                onDeleteClick = {
+                                                    viewModel.deleteLink(link)
+                                                },
+                                                showFavicon = uiState.viewSettings.showFavicon,
+                                                showUrl = uiState.viewSettings.showUrl,
+                                                showTags = uiState.viewSettings.showTags,
+                                                showDate = uiState.viewSettings.showDateSaved
+                                            )
                                         }
-                                    )
+                                        uiState.gridCellsCount == 2 -> {
+                                            CompactLinkCard(
+                                                modifier = Modifier.animateItem(),
+                                                link = link,
+                                                onClick = {
+                                                    if (isSelectionMode) {
+                                                        handleSelectionClick(link.id)
+                                                    } else {
+                                                        onNavigateToDetails(link.id)
+                                                    }
+                                                },
+                                                onLongPress = {
+                                                    handleLongPress(link.id)
+                                                },
+                                                isSelected = selectedLinks.contains(link.id),
+                                                isSelectionMode = isSelectionMode,
+                                                onFavoriteClick = {
+                                                    viewModel.toggleFavorite(link.id, link.isFavorite)
+                                                },
+                                                onCopyClick = {
+                                                    copyToClipboard(context, link.url)
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            message = "Link copied to clipboard",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                    }
+                                                },
+                                                onShareClick = {
+                                                    shareLink(context, link.url, link.title)
+                                                },
+                                                onDeleteClick = {
+                                                    viewModel.deleteLink(link)
+                                                },
+                                                showFavicon = uiState.viewSettings.showFavicon,
+                                                showUrl = uiState.viewSettings.showUrl,
+                                                showTags = uiState.viewSettings.showTags,
+                                                showDate = uiState.viewSettings.showDateSaved
+                                            )
+                                        }
+                                        else -> {
+                                            MicroLinkCard(
+                                                modifier = Modifier.animateItem(),
+                                                link = link,
+                                                onClick = {
+                                                    if (isSelectionMode) {
+                                                        handleSelectionClick(link.id)
+                                                    } else {
+                                                        onNavigateToDetails(link.id)
+                                                    }
+                                                },
+                                                onLongPress = {
+                                                    handleLongPress(link.id)
+                                                },
+                                                isSelected = selectedLinks.contains(link.id),
+                                                isSelectionMode = isSelectionMode
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                
             }
         }
+    }
 
         SnackbarHost(
             hostState = snackbarHostState,
@@ -366,6 +393,20 @@ fun FavoritesScreen(
                 showDeleteDialog = false
                 exitSelectionMode()
             }
+        )
+    }
+
+    if (showViewSettings) {
+        LinkViewSettingsBottomSheet(
+            layoutMode = uiState.layoutMode,
+            onLayoutModeChange = { viewModel.setLayoutMode(it) },
+            gridColumns = uiState.gridColumns,
+            onGridColumnsChange = { viewModel.setGridColumns(it) },
+            viewSettings = uiState.viewSettings,
+            onViewSettingsChange = { viewModel.setViewSettings(it) },
+            sortOrder = uiState.sortOrder,
+            onSortOrderChange = { viewModel.setSortOrder(it) },
+            onDismiss = { showViewSettings = false }
         )
     }
 }

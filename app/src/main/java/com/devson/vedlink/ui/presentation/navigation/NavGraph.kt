@@ -28,7 +28,8 @@ import com.devson.vedlink.ui.presentation.components.TopBarConfig
 fun NavGraph(
     navController: NavHostController,
     pagerState: PagerState,
-    onNavigateToDetails: (Int) -> Unit
+    onNavigateToDetails: (Int) -> Unit,
+    onShowNewFolderAction: (((() -> Unit)?) -> Unit)
 ) {
     val scope = rememberCoroutineScope()
 
@@ -152,7 +153,8 @@ fun NavGraph(
                         2 -> FoldersScreen(
                             isActive = isActive,
                             onUpdateTopBarConfig = onUpdateConfig,
-                            onNavigateToDetails = onNavigateToDetails
+                            onNavigateToDetails = onNavigateToDetails,
+                            onShowNewFolderAction = onShowNewFolderAction
                         )
                         3 -> FavoritesScreen(
                             isActive = isActive,

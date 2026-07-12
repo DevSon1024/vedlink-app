@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -74,16 +75,7 @@ fun HomeScreen(
         if (isActive) {
             onUpdateTopBarConfig(
                 com.devson.vedlink.ui.presentation.components.TopBarConfig(
-                    title = "VedLink",
-                    actions = {
-                        IconButton(onClick = onNavigateToFavorites) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Favorites",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    title = "VedLink"
                 )
             )
         }
@@ -300,23 +292,23 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val carouselState = rememberCarouselState { uiState.recentLinks.size + 1 }
-                        HorizontalMultiBrowseCarousel(
-                            state = carouselState,
-                            preferredItemWidth = 280.dp,
-                            itemSpacing = 12.dp,
-                            contentPadding = PaddingValues(horizontal = 20.dp),
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)
-                        ) { index ->
-                            if (index < uiState.recentLinks.size) {
-                                val link = uiState.recentLinks[index]
+                        ) {
+                            itemsIndexed(
+                                items = uiState.recentLinks,
+                                key = { index, link -> "${link.id}_$index" }
+                            ) { index, link ->
                                 JumpBackInCard(
                                     link = link,
                                     onClick = { onNavigateToDetails(link.id) }
                                 )
-                            } else {
+                            }
+                            item {
                                 SeeAllCarouselCard(
                                     onClick = onNavigateToSavedLinks
                                 )
@@ -392,9 +384,12 @@ fun ActionCard(
     containerColor: Color,
     onClick: () -> Unit
 ) {
+    val shape = MaterialTheme.shapes.medium
     Surface(
-        modifier = modifier.clickable { onClick() },
-        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
+            .clip(shape)
+            .clickable { onClick() },
+        shape = shape,
         color = containerColor,
         tonalElevation = 1.dp
     ) {
@@ -428,20 +423,22 @@ fun ActionCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CarouselItemScope.JumpBackInCard(
+private fun JumpBackInCard(
     link: Link,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = RoundedCornerShape(16.dp)
 
     Card(
         onClick = onClick,
         modifier = modifier
-            .maskClip(cardShape)
+            .width(260.dp)
+            .height(190.dp)
+            .shadow(2.dp, shape = cardShape)
+            .clip(cardShape)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
@@ -586,17 +583,19 @@ private fun CarouselItemScope.JumpBackInCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CarouselItemScope.SeeAllCarouselCard(
+private fun SeeAllCarouselCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = RoundedCornerShape(16.dp)
     Card(
         onClick = onClick,
         modifier = modifier
-            .maskClip(cardShape)
+            .width(160.dp)
+            .height(190.dp)
+            .shadow(2.dp, shape = cardShape)
+            .clip(cardShape)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),

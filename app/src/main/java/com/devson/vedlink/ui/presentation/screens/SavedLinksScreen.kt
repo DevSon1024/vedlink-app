@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -200,7 +201,7 @@ fun SavedLinksScreen(
                         }
                         IconButton(onClick = { showViewSettings = true }) {
                             Icon(
-                                imageVector = Icons.Default.DisplaySettings,
+                                imageVector = Icons.Default.Tune,
                                 contentDescription = "View settings",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -290,10 +291,10 @@ fun SavedLinksScreen(
                                 ),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(
+                                itemsIndexed(
                                     items = uiState.links,
-                                    key = { it.id }
-                                ) { link ->
+                                    key = { index, link -> "${link.id}_$index" }
+                                ) { index, link ->
                                     when {
                                         // count == 1 → full LinkCard (list style)
                                         uiState.gridCellsCount == 1 -> {
@@ -392,6 +393,8 @@ fun SavedLinksScreen(
             onGridColumnsChange = { viewModel.setGridColumns(it) },
             viewSettings = uiState.viewSettings,
             onViewSettingsChange = { viewModel.setViewSettings(it) },
+            sortOrder = uiState.sortOrder,
+            onSortOrderChange = { viewModel.setSortOrder(it) },
             onDismiss = { showViewSettings = false }
         )
     }

@@ -12,10 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +39,8 @@ fun LinkViewSettingsBottomSheet(
     onGridColumnsChange: (Int) -> Unit,
     viewSettings: LinkViewSettings,
     onViewSettingsChange: (LinkViewSettings) -> Unit,
+    sortOrder: String,
+    onSortOrderChange: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -152,6 +152,33 @@ fun LinkViewSettingsBottomSheet(
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Sort By Section
+            LinkSettingsSectionLabel("Sort By")
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LinkIconToggleButton(
+                    label = "Latest First",
+                    selected = sortOrder == "DESC",
+                    selectedIcon = Icons.Filled.ArrowDownward,
+                    unselectedIcon = Icons.Outlined.ArrowDownward,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSortOrderChange("DESC") }
+                )
+                LinkIconToggleButton(
+                    label = "Oldest First",
+                    selected = sortOrder == "ASC",
+                    selectedIcon = Icons.Filled.ArrowUpward,
+                    unselectedIcon = Icons.Outlined.ArrowUpward,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSortOrderChange("ASC") }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

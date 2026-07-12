@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +68,7 @@ fun FoldersScreen(
     isActive: Boolean = false,
     onUpdateTopBarConfig: (com.devson.vedlink.ui.presentation.components.TopBarConfig) -> Unit = {},
     onNavigateToDetails: (Int) -> Unit,
+    onShowNewFolderAction: (((() -> Unit)?) -> Unit) = {},
     viewModel: FoldersViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -180,6 +183,14 @@ fun FoldersScreen(
         }
     }
 
+    LaunchedEffect(isActive, selectedTab, isSelectionMode) {
+        if (isActive && selectedTab == 1 && !isSelectionMode) {
+            onShowNewFolderAction { showCreateFolderDialog = true }
+        } else {
+            onShowNewFolderAction(null)
+        }
+    }
+
     LaunchedEffect(isActive, isSelectionMode, selectedLinks.size, activeLinks.size, selectedTab, selectedFolderDomain, selectedCustomFolderId, uiState.customFolders) {
         if (!isActive) return@LaunchedEffect
         if (isSelectionMode) {
@@ -273,7 +284,7 @@ fun FoldersScreen(
                         if (selectedTab == 0 && selectedFolderDomain == null) {
                             IconButton(onClick = { showViewSettings = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.DisplaySettings,
+                                    imageVector = Icons.Default.Tune,
                                     contentDescription = "View settings",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -297,17 +308,7 @@ fun FoldersScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {},
-            floatingActionButton = {
-                if (selectedTab == 1 && !isSelectionMode) {
-                    ExtendedFloatingActionButton(
-                        onClick = { showCreateFolderDialog = true },
-                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
-                        text = { Text("New Folder") },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            },
+            floatingActionButton = {},
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
@@ -580,7 +581,7 @@ fun DomainsView(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(items = folders, key = { it.domain }) { folder ->
+            itemsIndexed(items = folders, key = { index, folder -> "${folder.domain}_$index" }) { index, folder ->
                 FolderGridCard(
                     folder = folder,
                     gridCellsCount = gridCellsCount,
@@ -593,7 +594,7 @@ fun DomainsView(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(items = folders, key = { it.domain }) { folder ->
+            itemsIndexed(items = folders, key = { index, folder -> "${folder.domain}_$index" }) { index, folder ->
                 FolderListCard(
                     folder = folder,
                     isExpanded = expandedDomain == folder.domain,
@@ -634,7 +635,7 @@ fun FolderLinksGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(items = links, key = { it.id }) { link ->
+            itemsIndexed(items = links, key = { index, link -> "${link.id}_$index" }) { index, link ->
                 CompactLinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
@@ -653,7 +654,7 @@ fun FolderLinksGrid(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(items = links, key = { it.id }) { link ->
+            itemsIndexed(items = links, key = { index, link -> "${link.id}_$index" }) { index, link ->
                 LinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
@@ -710,7 +711,7 @@ fun CustomFoldersView(
         }
 
         // Subfolders
-        items(items = folders, key = { it.id }) { folder ->
+        itemsIndexed(items = folders, key = { index, folder -> "${folder.id}_$index" }) { index, folder ->
             var expandedMenu by remember { mutableStateOf(false) }
 
             Surface(
@@ -780,7 +781,7 @@ fun CustomFoldersView(
                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
             }
-            items(items = links, key = { it.id }) { link ->
+            itemsIndexed(items = links, key = { index, link -> "${link.id}_$index" }) { index, link ->
                 LinkCard(
                     link = link,
                     onClick = { onLinkClick(link.id) },
@@ -814,12 +815,14 @@ fun FolderGridCard(
     val titleStyle = if (isDense) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
     val subtitleStyle = if (isDense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall
 
+    val cardShape = MaterialTheme.shapes.medium
     Card(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(0.95f)
+            .clip(cardShape)
             .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.medium,
+        shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -887,9 +890,11 @@ fun FolderListCard(
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
+        val cardShape = MaterialTheme.shapes.medium
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(cardShape)
                 .clickable(onClick = onToggleExpand)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically

@@ -48,6 +48,16 @@ class ThemePreferences @Inject constructor(
     private val FOLDER_LAYOUT_MODE_KEY = stringPreferencesKey("folder_layout_mode")
     private val FOLDER_GRID_COLUMNS_KEY = intPreferencesKey("folder_grid_columns")
 
+    // Favorite View Settings preferences
+    private val FAVORITE_GRID_CELLS_COUNT_KEY = intPreferencesKey("favorite_grid_cells_count")
+    private val FAVORITE_SORT_ORDER_KEY = stringPreferencesKey("favorite_sort_order")
+    private val FAVORITE_LAYOUT_MODE_KEY = stringPreferencesKey("favorite_layout_mode")
+    private val FAVORITE_GRID_COLUMNS_KEY = intPreferencesKey("favorite_grid_columns")
+    private val FAVORITE_SHOW_FAVICON_KEY = booleanPreferencesKey("favorite_show_favicon")
+    private val FAVORITE_SHOW_URL_KEY = booleanPreferencesKey("favorite_show_url")
+    private val FAVORITE_SHOW_TAGS_KEY = booleanPreferencesKey("favorite_show_tags")
+    private val FAVORITE_SHOW_DATE_SAVED_KEY = booleanPreferencesKey("favorite_show_date_saved")
+
     // Home section visibility preferences
     private val HOME_SHOW_STATS_KEY = booleanPreferencesKey("home_show_stats")
     private val HOME_SHOW_QUICK_ACTIONS_KEY = booleanPreferencesKey("home_show_quick_actions")
@@ -124,6 +134,39 @@ class ThemePreferences @Inject constructor(
 
     val folderGridColumns: Flow<Int> = context.dataStore.data.map { preferences ->
         (preferences[FOLDER_GRID_COLUMNS_KEY] ?: 2).coerceIn(2, 4)
+    }
+
+    // Favorite View Settings flows
+    val favoriteGridCellsCount: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[FAVORITE_GRID_CELLS_COUNT_KEY] ?: 1).coerceIn(1, 6)
+    }
+
+    val favoriteSortOrder: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_SORT_ORDER_KEY] ?: "DESC"
+    }
+
+    val favoriteLayoutMode: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_LAYOUT_MODE_KEY] ?: "list"
+    }
+
+    val favoriteGridColumns: Flow<Int> = context.dataStore.data.map { preferences ->
+        (preferences[FAVORITE_GRID_COLUMNS_KEY] ?: 2).coerceIn(2, 4)
+    }
+
+    val favoriteShowFavicon: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_SHOW_FAVICON_KEY] ?: true
+    }
+
+    val favoriteShowUrl: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_SHOW_URL_KEY] ?: true
+    }
+
+    val favoriteShowTags: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_SHOW_TAGS_KEY] ?: true
+    }
+
+    val favoriteShowDateSaved: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_SHOW_DATE_SAVED_KEY] ?: true
     }
 
     // Home section visibility flows
@@ -241,6 +284,54 @@ class ThemePreferences @Inject constructor(
     suspend fun setFolderGridColumns(columns: Int) {
         context.dataStore.edit { preferences ->
             preferences[FOLDER_GRID_COLUMNS_KEY] = columns.coerceIn(2, 4)
+        }
+    }
+
+    suspend fun setFavoriteGridCellsCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_GRID_CELLS_COUNT_KEY] = count.coerceIn(1, 6)
+        }
+    }
+
+    suspend fun setFavoriteSortOrder(order: String) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_SORT_ORDER_KEY] = if (order == "ASC") "ASC" else "DESC"
+        }
+    }
+
+    suspend fun setFavoriteLayoutMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_LAYOUT_MODE_KEY] = mode
+        }
+    }
+
+    suspend fun setFavoriteGridColumns(columns: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_GRID_COLUMNS_KEY] = columns.coerceIn(2, 4)
+        }
+    }
+
+    suspend fun setFavoriteShowFavicon(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_SHOW_FAVICON_KEY] = show
+        }
+    }
+
+    suspend fun setFavoriteShowUrl(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_SHOW_URL_KEY] = show
+        }
+    }
+
+    suspend fun setFavoriteShowTags(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_SHOW_TAGS_KEY] = show
+        }
+    }
+
+    suspend fun setFavoriteShowDateSaved(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FAVORITE_SHOW_DATE_SAVED_KEY] = show
         }
     }
 

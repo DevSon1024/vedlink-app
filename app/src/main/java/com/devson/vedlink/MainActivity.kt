@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devson.vedlink.data.preferences.ThemePreferences
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
                 var showAddDialog by remember { mutableStateOf(false) }
                 var showAddTopicDialog by remember { mutableStateOf(false) }
+                var onNewFolderClickAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
                 val pagerState = rememberPagerState(pageCount = { 5 })
                 val mainPages = remember {
@@ -160,10 +162,16 @@ class MainActivity : ComponentActivity() {
                                         val targetIndex = mainPages.indexOf(route)
                                         if (targetIndex != -1) {
                                             if (currentRoute != Screen.Home.route) {
-                                                navController.popBackStack(Screen.Home.route, false)
+                                                navController.navigate(Screen.Home.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                             scope.launch {
-                                                pagerState.animateScrollToPage(targetIndex)
+                                                pagerState.scrollToPage(targetIndex)
                                             }
                                         }
                                     }
@@ -179,15 +187,16 @@ class MainActivity : ComponentActivity() {
                                 Screen.Favorites.route
                             )
                             AnimatedVisibility(
-                                visible = showFAB && !showAddDialog && !showAddTopicDialog,
-                                enter = scaleIn(animationSpec = tween(durationMillis = 400)) + fadeIn(),
-                                exit = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut()
-                            ) {
-                                ExpandableMultiFab(
-                                    onAddLinkClick = { showAddDialog = true },
-                                    onAddTopicClick = { showAddTopicDialog = true }
-                                )
-                            }
+                                    visible = showFAB && !showAddDialog && !showAddTopicDialog,
+                                    enter = scaleIn(animationSpec = tween(durationMillis = 400)) + fadeIn(),
+                                    exit = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut()
+                                ) {
+                                    ExpandableMultiFab(
+                                        onAddLinkClick = { showAddDialog = true },
+                                        onAddTopicClick = { showAddTopicDialog = true },
+                                        onNewFolderClick = onNewFolderClickAction
+                                    )
+                                }
                         }
                     ) { paddingValues ->
                         Box(
@@ -195,13 +204,14 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                                 .padding(bottom = paddingValues.calculateBottomPadding())
                         ) {
-                            NavGraph(
-                                navController = navController,
-                                pagerState = pagerState,
-                                onNavigateToDetails = { linkId ->
-                                    navController.navigate(Screen.LinkDetails.createRoute(linkId))
-                                }
-                            )
+                             NavGraph(
+                                 navController = navController,
+                                 pagerState = pagerState,
+                                 onNavigateToDetails = { linkId ->
+                                     navController.navigate(Screen.LinkDetails.createRoute(linkId))
+                                 },
+                                 onShowNewFolderAction = { onNewFolderClickAction = it }
+                             )
                         }
                     }
 
