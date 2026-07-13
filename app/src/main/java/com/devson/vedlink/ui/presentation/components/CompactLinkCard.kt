@@ -4,6 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +57,7 @@ fun CompactLinkCard(
     onShareClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    onEditTagsClick: () -> Unit = {},
     showFavicon: Boolean = true,
     showUrl: Boolean = true,
     showTags: Boolean = true,
@@ -195,31 +198,7 @@ fun CompactLinkCard(
                 }
 
                 // Bottom-right: Tag overlay (if showTags is true and tags exist, show only the first tag)
-                if (showTags && link.tags.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(6.dp)
-                    ) {
-                        link.tags.firstOrNull()?.let { tag ->
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            ) {
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
-                    }
-                }
+                // Removed single tag overlay from image in favor of full tag row below description
             }
 
             // Bottom portion: Metadata and text
@@ -303,6 +282,32 @@ fun CompactLinkCard(
                     )
                 }
 
+                // Inline tags if any exist (horizontally scrollable row)
+                if (showTags && link.tags.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        link.tags.forEach { tag ->
+                            Surface(
+                                shape = MaterialTheme.shapes.extraSmall,
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Favorite and Options Actions at the bottom
                 Row(
                     modifier = Modifier
@@ -372,7 +377,8 @@ fun CompactLinkCard(
                                     onRefreshClick = { onRefreshClick(); showMenu = false },
                                     onDeleteClick = { onDeleteClick(); showMenu = false },
                                     tags = link.tags,
-                                    onViewTagsClick = { showTagsDialog = true; showMenu = false }
+                                    onViewTagsClick = { showTagsDialog = true; showMenu = false },
+                                    onEditTagsClick = { onEditTagsClick(); showMenu = false }
                                 )
                             }
                         }

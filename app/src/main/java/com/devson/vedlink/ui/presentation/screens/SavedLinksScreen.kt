@@ -43,6 +43,7 @@ import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -322,6 +323,7 @@ fun SavedLinksScreen(
                                                 onShareClick = { shareLink(context, link.url, link.title) },
                                                 onRefreshClick = { viewModel.refreshLink(link.id) },
                                                 onDeleteClick = { viewModel.deleteLink(link) },
+                                                onEditTagsClick = { viewModel.editTags(link) },
                                                 showFavicon = uiState.viewSettings.showFavicon,
                                                 showUrl = uiState.viewSettings.showUrl,
                                                 showTags = uiState.viewSettings.showTags,
@@ -353,6 +355,7 @@ fun SavedLinksScreen(
                                                 onShareClick = { shareLink(context, link.url, link.title) },
                                                 onRefreshClick = { viewModel.refreshLink(link.id) },
                                                 onDeleteClick = { viewModel.deleteLink(link) },
+                                                onEditTagsClick = { viewModel.editTags(link) },
                                                 showFavicon = uiState.viewSettings.showFavicon,
                                                 showUrl = uiState.viewSettings.showUrl,
                                                 showTags = uiState.viewSettings.showTags,
@@ -407,6 +410,135 @@ fun SavedLinksScreen(
                 viewModel.deleteLinks(selectedLinks.toList())
                 showDeleteDialog = false
                 exitSelectionMode()
+            }
+        )
+    }
+
+    // Tag Editing dialog with Smart Recommendations
+    val editingTagsLink = uiState.editingTagsLink
+    if (editingTagsLink != null) {
+        val allTags by viewModel.allTags.collectAsState()
+        var newTagName by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.editTags(null)
+            },
+            title = {
+                Text(
+                    text = "Edit Tags",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Link: ${editingTagsLink.title ?: "Untitled"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Current tags
+                    if (editingTagsLink.tags.isNotEmpty()) {
+                        Text(
+                            text = "Current Tags (tap to remove):",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            editingTagsLink.tags.forEach { tag ->
+                                InputChip(
+                                    selected = true,
+                                    onClick = {
+                                        viewModel.removeTagFromLink(editingTagsLink.id, tag)
+                                    },
+                                    label = { Text(tag) },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove tag",
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Add new tag input field
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = { newTagName = it },
+                        label = { Text("Add Tag") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Smart recommendations
+                    val filteredTags = remember(newTagName, allTags) {
+                        if (newTagName.isBlank()) {
+                            emptyList()
+                        } else {
+                            allTags.filter { it.contains(newTagName, ignoreCase = true) }
+                        }
+                    }
+
+                    if (filteredTags.isNotEmpty()) {
+                        Text(
+                            text = "Recommendations",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            filteredTags.take(5).forEach { tag ->
+                                SuggestionChip(
+                                    onClick = {
+                                        viewModel.addTagToLink(editingTagsLink.id, tag)
+                                        newTagName = ""
+                                    },
+                                    label = { Text(tag) }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newTagName.isNotBlank()) {
+                            viewModel.addTagToLink(editingTagsLink.id, newTagName.trim())
+                            newTagName = ""
+                        }
+                    }
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.editTags(null)
+                    }
+                ) {
+                    Text("Close")
+                }
             }
         )
     }

@@ -27,8 +27,8 @@ android {
         applicationId = "com.devson.vedlink"
         minSdk = 26
         targetSdk = 35
-        versionCode = 103
-        versionName = "1.0.3"
+        versionCode = 104
+        versionName = "1.0.4"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -146,9 +146,9 @@ dependencies {
 
     // Room Database
     val roomVersion = "2.6.1"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Hilt Dependency Injection
     val hiltVersion = "2.52"

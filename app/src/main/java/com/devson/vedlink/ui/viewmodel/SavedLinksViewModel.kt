@@ -21,6 +21,8 @@ class SavedLinksViewModel @Inject constructor(
     private val deleteLinkUseCase: DeleteLinkUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val searchLinksUseCase: SearchLinksUseCase,
+    private val updateLinkUseCase: UpdateLinkUseCase,
+    private val getAllTagsUseCase: GetAllTagsUseCase,
     private val workManagerHelper: WorkManagerHelper,
     private val themePreferences: ThemePreferences
 ) : ViewModel() {
@@ -30,6 +32,9 @@ class SavedLinksViewModel @Inject constructor(
 
     private val _uiEvent = MutableSharedFlow<SavedLinksUiEvent>()
     val uiEvent: SharedFlow<SavedLinksUiEvent> = _uiEvent.asSharedFlow()
+
+    val allTags: StateFlow<List<String>> = getAllTagsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @OptIn(FlowPreview::class)
     private val rawSearchQuery = MutableStateFlow("")
@@ -332,6 +337,58 @@ class SavedLinksViewModel @Inject constructor(
             _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Refreshing link..."))
         }
     }
+
+    fun editTags(link: Link?) {
+        _uiState.update { it.copy(editingTagsLink = link) }
+    }
+
+    fun addTagToLink(linkId: Int, tag: String) {
+        val currentLink = _uiState.value.links.find { it.id == linkId } ?: return
+        val cleanTag = tag.trim().lowercase()
+        if (cleanTag.isBlank() || currentLink.tags.contains(cleanTag)) return
+        val updatedTags = currentLink.tags + cleanTag
+        val updated = currentLink.copy(
+            tags = updatedTags,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            try {
+                updateLinkUseCase(updated)
+                _rawLinks.update { list ->
+                    list.map { if (it.id == linkId) updated else it }
+                }
+                if (_uiState.value.editingTagsLink?.id == linkId) {
+                    _uiState.update { it.copy(editingTagsLink = updated) }
+                }
+                _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Tag added"))
+            } catch (e: Exception) {
+                _uiEvent.emit(SavedLinksUiEvent.ShowError(e.message ?: "Failed to add tag"))
+            }
+        }
+    }
+
+    fun removeTagFromLink(linkId: Int, tag: String) {
+        val currentLink = _uiState.value.links.find { it.id == linkId } ?: return
+        val updatedTags = currentLink.tags - tag
+        val updated = currentLink.copy(
+            tags = updatedTags,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            try {
+                updateLinkUseCase(updated)
+                _rawLinks.update { list ->
+                    list.map { if (it.id == linkId) updated else it }
+                }
+                if (_uiState.value.editingTagsLink?.id == linkId) {
+                    _uiState.update { it.copy(editingTagsLink = updated) }
+                }
+                _uiEvent.emit(SavedLinksUiEvent.ShowSuccess("Tag removed"))
+            } catch (e: Exception) {
+                _uiEvent.emit(SavedLinksUiEvent.ShowError(e.message ?: "Failed to remove tag"))
+            }
+        }
+    }
 }
 
 data class SavedLinksUiState(
@@ -344,7 +401,8 @@ data class SavedLinksUiState(
     val layoutMode: String = "list",
     val gridColumns: Int = 2,
     val viewSettings: LinkViewSettings = LinkViewSettings(),
-    val isPrefsLoaded: Boolean = false
+    val isPrefsLoaded: Boolean = false,
+    val editingTagsLink: Link? = null
 )
 
 sealed class SavedLinksUiEvent {

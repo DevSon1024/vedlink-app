@@ -46,7 +46,8 @@ fun LinkDetailsScreen(
     onUpdateNotes: (String) -> Unit,
     onUrlCardClick: () -> Unit,
     onImageClick: () -> Unit,
-    onImageLongClick: () -> Unit
+    onImageLongClick: () -> Unit,
+    allTags: List<String> = emptyList()
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -416,13 +417,53 @@ fun LinkDetailsScreen(
                     },
                     title = { Text("Add Tag") },
                     text = {
-                        OutlinedTextField(
-                            value = newTagName,
-                            onValueChange = { newTagName = it },
-                            label = { Text("Tag Name") },
-                            singleLine = true,
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            OutlinedTextField(
+                                value = newTagName,
+                                onValueChange = { newTagName = it },
+                                label = { Text("Tag Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            // Filtering recommendations
+                            val filteredTags = remember(newTagName, allTags) {
+                                if (newTagName.isBlank()) {
+                                    emptyList()
+                                } else {
+                                    allTags.filter { it.contains(newTagName, ignoreCase = true) }
+                                }
+                            }
+
+                            if (filteredTags.isNotEmpty()) {
+                                Text(
+                                    text = "Recommendations",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    filteredTags.take(5).forEach { tag ->
+                                        SuggestionChip(
+                                            onClick = {
+                                                onAddTag(tag)
+                                                showAddTagDialog = false
+                                                newTagName = ""
+                                            },
+                                            label = { Text(tag) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     },
                     confirmButton = {
                         TextButton(

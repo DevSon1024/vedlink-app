@@ -317,6 +317,7 @@ fun LinkDetailsPagerScreen(
             }
 
             val pageUiState by pageViewModel.uiState.collectAsState()
+            val allTags by pageViewModel.allTags.collectAsState()
 
             if (pageUiState.isLoading) {
                 Box(
@@ -348,7 +349,8 @@ fun LinkDetailsPagerScreen(
                                 )
                             }
                             Unit
-                        }
+                        },
+                        allTags = allTags
                     )
                 }
             }

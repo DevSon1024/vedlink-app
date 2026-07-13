@@ -4,7 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,6 +52,7 @@ fun LinkCard(
     onShareClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    onEditTagsClick: () -> Unit = {},
     showFavicon: Boolean = true,
     showUrl: Boolean = true,
     showTags: Boolean = true,
@@ -206,13 +209,17 @@ fun LinkCard(
                     )
                 }
 
-                // Inline tags if any exist
+                // Inline tags if any exist (horizontally scrollable row)
                 if (showTags && link.tags.isNotEmpty()) {
                     Row(
-                        modifier = Modifier.padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        link.tags.take(3).forEach { tag ->
+                        link.tags.forEach { tag ->
                             Surface(
                                 shape = MaterialTheme.shapes.extraSmall,
                                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
@@ -305,7 +312,8 @@ fun LinkCard(
                                 onRefreshClick = { onRefreshClick(); showMenu = false },
                                 onDeleteClick = { onDeleteClick(); showMenu = false },
                                 tags = link.tags,
-                                onViewTagsClick = { showTagsDialog = true; showMenu = false }
+                                onViewTagsClick = { showTagsDialog = true; showMenu = false },
+                                onEditTagsClick = { onEditTagsClick(); showMenu = false }
                             )
                         }
                     }
@@ -400,12 +408,23 @@ fun LinkOptionsMenu(
     onRefreshClick: () -> Unit,
     onDeleteClick: () -> Unit,
     tags: List<String> = emptyList(),
-    onViewTagsClick: (() -> Unit)? = null
+    onViewTagsClick: (() -> Unit)? = null,
+    onEditTagsClick: () -> Unit = {}
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss
     ) {
+        DropdownMenuItem(
+            text = { Text("Edit tags") },
+            onClick = onEditTagsClick,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null
+                )
+            }
+        )
         if (onViewTagsClick != null && tags.isNotEmpty()) {
             DropdownMenuItem(
                 text = { Text("View All Tags") },

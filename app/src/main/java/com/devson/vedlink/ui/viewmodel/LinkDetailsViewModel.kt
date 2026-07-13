@@ -9,6 +9,7 @@ import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
 import com.devson.vedlink.domain.usecase.GetLinkByIdUseCase
 import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
 import com.devson.vedlink.domain.usecase.UpdateLinkUseCase
+import com.devson.vedlink.domain.usecase.GetAllTagsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -30,10 +31,14 @@ class LinkDetailsViewModel @Inject constructor(
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deleteLinkUseCase: DeleteLinkUseCase,
     private val updateLinkUseCase: UpdateLinkUseCase,
+    private val getAllTagsUseCase: GetAllTagsUseCase,
     getFoldersUseCase: GetFoldersUseCase
 ) : ViewModel() {
 
     val folders: StateFlow<List<Folder>> = getFoldersUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allTags: StateFlow<List<String>> = getAllTagsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _uiState = MutableStateFlow(LinkDetailsUiState())
