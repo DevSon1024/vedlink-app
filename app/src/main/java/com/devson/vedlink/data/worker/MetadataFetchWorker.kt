@@ -10,6 +10,7 @@ import com.devson.vedlink.data.network.normalizer.UrlNormalizer
 import com.devson.vedlink.data.network.scraper.MetadataPipeline
 import com.devson.vedlink.data.network.scraper.WebsiteDetector
 import com.devson.vedlink.domain.model.MetadataState
+import com.devson.vedlink.domain.model.WebsiteProvider
 import com.devson.vedlink.domain.repository.LinkRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -89,12 +90,25 @@ class MetadataFetchWorker @AssistedInject constructor(
                 MetadataState.COMPLETED
             }
 
+            // Extract dominant color from preview image or favicon fallback on Dispatchers.Default
+            val dominantColor = try {
+                localPreviewPath?.let { previewImageEngine.extractDominantColor(it) }
+                    ?: localFaviconPath?.let { previewImageEngine.extractDominantColor(it) }
+            } catch (e: Exception) {
+                null
+            }
+
+            // Estimate reading time for articles (word count / 200, minimum 1 min, or null for non-articles)
+            val estimatedReadingTime = estimateReadingTime(provider, scraped.description)
+
             // 8. Commit final metadata to SQLite database
             val updatedLink = linkWithCanonical.copy(
                 title = scraped.title ?: linkWithCanonical.title,
                 description = scraped.description ?: linkWithCanonical.description,
                 imageUrl = localPreviewPath ?: linkWithCanonical.imageUrl,
                 faviconUrl = localFaviconPath ?: linkWithCanonical.faviconUrl,
+                accentColorHex = dominantColor ?: linkWithCanonical.accentColorHex,
+                readingTimeMinutes = estimatedReadingTime ?: linkWithCanonical.readingTimeMinutes,
                 metadataState = finalState,
                 updatedAt = System.currentTimeMillis(),
                 lastUpdated = System.currentTimeMillis()
@@ -128,6 +142,34 @@ class MetadataFetchWorker @AssistedInject constructor(
         } catch (e: Exception) {
             url
         }
+    }
+
+    private fun estimateReadingTime(provider: WebsiteProvider, text: String?): Int? {
+        val nonArticleProviders = setOf(
+            WebsiteProvider.YOUTUBE,
+            WebsiteProvider.SPOTIFY,
+            WebsiteProvider.TIKTOK,
+            WebsiteProvider.NETFLIX,
+            WebsiteProvider.PRIME_VIDEO,
+            WebsiteProvider.PLAY_STORE,
+            WebsiteProvider.APP_STORE,
+            WebsiteProvider.STEAM,
+            WebsiteProvider.INSTAGRAM,
+            WebsiteProvider.PINTEREST
+        )
+        if (provider in nonArticleProviders) return null
+
+        val articleProviders = setOf(
+            WebsiteProvider.MEDIUM,
+            WebsiteProvider.DEV_TO,
+            WebsiteProvider.WIKIPEDIA
+        )
+        if (text.isNullOrBlank()) {
+            return if (provider in articleProviders) 1 else null
+        }
+        val words = text.trim().split(Regex("\\s+")).count { it.isNotBlank() }
+        if (words < 5 && provider !in articleProviders) return null
+        return maxOf(1, words / 200)
     }
 
     companion object {

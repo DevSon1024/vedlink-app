@@ -27,6 +27,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.network.scraper.MetadataPipeline
+import com.devson.vedlink.domain.repository.FolderRepository
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.domain.usecase.AddSearchTopicUseCase
@@ -60,6 +61,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var linkRepository: LinkRepository
+
+    @Inject
+    lateinit var folderRepository: FolderRepository
 
     @Inject
     lateinit var saveLinkUseCase: SaveLinkUseCase
@@ -135,8 +139,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Gather recent links reactively for the AddLink Bottom Sheet
+                // Gather recent links and folders reactively for the AddLink Bottom Sheet
                 val allLinks by linkRepository.getAllLinks().collectAsState(initial = emptyList())
+                val allFolders by folderRepository.getAllFolders().collectAsState(initial = emptyList())
                 val recentLinks = remember(allLinks) {
                     allLinks.sortedByDescending { it.createdAt }.take(10)
                 }
@@ -278,10 +283,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Unified Add Link Dialog Interface
+                    // Unified Add Link & Note Dialog Interface
                     if (showAddDialog) {
                         EnhancedAddLinkBottomSheet(
                             recentLinks = recentLinks,
+                            folders = allFolders,
                             onDismiss = { showAddDialog = false },
                             onConfirm = { url, metadata ->
                                 showAddDialog = false
@@ -295,6 +301,26 @@ class MainActivity : ComponentActivity() {
                                         snackbarHostState.showSnackbar("Link saved successfully")
                                     }.onFailure { e ->
                                         snackbarHostState.showSnackbar("Error: ${e.message ?: "Failed to save link"}")
+                                    }
+                                }
+                            },
+                            onSaveLinkNote = { url, noteTitle, noteBody, isPinned, folderId, tags, metadata ->
+                                showAddDialog = false
+                                scope.launch {
+                                    saveLinkUseCase(
+                                        url = url,
+                                        title = metadata?.title,
+                                        description = metadata?.description,
+                                        imageUrl = metadata?.imageUrl,
+                                        folderId = folderId,
+                                        tags = tags,
+                                        noteTitle = noteTitle,
+                                        noteBodyMarkdown = noteBody,
+                                        isPinned = isPinned
+                                    ).onSuccess {
+                                        snackbarHostState.showSnackbar("Link & Note saved successfully")
+                                    }.onFailure { e ->
+                                        snackbarHostState.showSnackbar("Error: ${e.message ?: "Failed to save"}")
                                     }
                                 }
                             },

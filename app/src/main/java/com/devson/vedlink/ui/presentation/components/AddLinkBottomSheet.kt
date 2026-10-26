@@ -1,6 +1,5 @@
 package com.devson.vedlink.ui.presentation.components
 
-import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -12,71 +11,136 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.domain.model.ScrapedMetadata
-import kotlinx.coroutines.launch
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.devson.vedlink.domain.model.Folder
+import com.devson.vedlink.domain.model.Link
+import com.devson.vedlink.domain.model.ScrapedMetadata
+import com.devson.vedlink.domain.util.LinkExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EnhancedAddLinkBottomSheet(
     recentLinks: List<Link>,
     onDismiss: () -> Unit,
     onConfirm: (String, ScrapedMetadata?) -> Unit,
-    onAutoPaste: () -> Unit,
+    onAutoPaste: () -> Unit = {},
     onFetchPreview: suspend (String) -> ScrapedMetadata?,
     urlInputValue: String = "",
-    onUrlChange: (String) -> Unit = {}
+    onUrlChange: (String) -> Unit = {},
+    folders: List<Folder> = emptyList(),
+    onSaveLinkNote: ((
+        url: String,
+        noteTitle: String?,
+        noteBody: String?,
+        isPinned: Boolean,
+        folderId: Int?,
+        tags: List<String>,
+        metadata: ScrapedMetadata?
+    ) -> Unit)? = null
 ) {
+    var noteTitle by remember { mutableStateOf("") }
+    var noteText by remember { mutableStateOf(urlInputValue) }
     var localUrl by remember { mutableStateOf(urlInputValue) }
-    val updateUrl: (String) -> Unit = { 
+
+    val updateUrl: (String) -> Unit = {
         localUrl = it
         onUrlChange(it)
     }
+
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var isValidUrl by remember { mutableStateOf(true) }
-    var showRecentLinks by remember { mutableStateOf(true) }
+    var isPinned by remember { mutableStateOf(false) }
+    var selectedFolderId by remember { mutableStateOf<Int?>(null) }
+    var folderMenuExpanded by remember { mutableStateOf(false) }
+    var selectedTags by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showAddTagDialog by remember { mutableStateOf(false) }
+    var newTagName by remember { mutableStateOf("") }
+    var showRecentLinks by remember { mutableStateOf(false) }
+
+    // Clipboard auto-detection state
+    var clipboardUrl by remember { mutableStateOf<String?>(null) }
+    var clipboardDomain by remember { mutableStateOf<String?>(null) }
+
+    // Detected URL & Domain from note text or URL input
+    var detectedUrl by remember { mutableStateOf<String?>(null) }
+    var detectedDomain by remember { mutableStateOf<String?>(null) }
+    val linkExtractor = remember { LinkExtractor() }
 
     // Setup state and scope for animation
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    
+
     // Internal Preview State
     var previewMetadata by remember { mutableStateOf<ScrapedMetadata?>(null) }
     var isPreviewLoading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(localUrl) {
-        if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
-            delay(500) // Debounce
+    // Check clipboard safely on mount
+    LaunchedEffect(Unit) {
+        try {
+            val clipText = clipboardManager.getText()?.text
+            if (!clipText.isNullOrBlank()) {
+                val extracted = linkExtractor.extractUrls(clipText).firstOrNull()
+                if (extracted != null && extracted != urlInputValue) {
+                    clipboardUrl = extracted
+                    clipboardDomain = linkExtractor.extractDomain(extracted)
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore clipboard errors safely
+        }
+    }
+
+    // 350ms debounced live URL detection from noteText and localUrl
+    LaunchedEffect(noteText, localUrl) {
+        delay(350)
+        val textToScan = when {
+            noteText.isNotBlank() && localUrl.isNotBlank() && !noteText.contains(localUrl) -> "$localUrl\n$noteText"
+            noteText.isNotBlank() -> noteText
+            else -> localUrl
+        }
+        val extracted = linkExtractor.extractUrls(textToScan).firstOrNull()
+        if (extracted != null) {
+            detectedUrl = extracted
+            detectedDomain = linkExtractor.extractDomain(extracted)
+            isValidUrl = true
+        } else {
+            detectedUrl = null
+            detectedDomain = null
+        }
+    }
+
+    // Fetch preview when detectedUrl is resolved
+    LaunchedEffect(detectedUrl) {
+        val target = detectedUrl
+        if (!target.isNullOrBlank() && isValidUrl(target)) {
             isPreviewLoading = true
             previewMetadata = null
             previewMetadata = withContext(Dispatchers.IO) {
-                onFetchPreview(localUrl)
+                onFetchPreview(target)
             }
             isPreviewLoading = false
         } else {
@@ -123,35 +187,45 @@ fun EnhancedAddLinkBottomSheet(
                 ) {
                     CustomDragHandle()
 
-                    // Header
+                    // Header Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Add New Link",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "Quick Link-Note",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.5).sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Capture thoughts & save links in real time",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
+                        // Top Paste Button
                         FloatingActionButton(
                             onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clipData = clipboard.primaryClip
-                                if (clipData != null && clipData.itemCount > 0) {
-                                    val item = clipData.getItemAt(0)
-                                    val pastedText = item.text?.toString() ?: item.uri?.toString() ?: ""
-                                    if (pastedText.isNotBlank()) {
-                                        updateUrl(pastedText)
-                                        onAutoPaste()
+                                val clipText = clipboardManager.getText()?.text
+                                if (!clipText.isNullOrBlank()) {
+                                    val extracted = linkExtractor.extractUrls(clipText).firstOrNull() ?: clipText
+                                    val newText = if (noteText.isBlank()) {
+                                        extracted
+                                    } else {
+                                        "$noteText\n$extracted"
                                     }
+                                    noteText = newText
+                                    updateUrl(extracted)
+                                    onAutoPaste()
                                 }
                             },
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(44.dp),
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             shape = CircleShape
@@ -159,76 +233,358 @@ fun EnhancedAddLinkBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.ContentPaste,
                                 contentDescription = "Auto Paste",
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // Input Field with premium rounded shape
-                    OutlinedTextField(
-                        value = localUrl,
-                        onValueChange = {
-                            updateUrl(it)
-                            isValidUrl = true
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Enter URL") },
-                        placeholder = { Text("https://example.com") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Link,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                    // One-Tap Clipboard Chip (Animated)
+                    AnimatedVisibility(
+                        visible = clipboardUrl != null,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        clipboardUrl?.let { clipUrl ->
+                            AssistChip(
+                                onClick = {
+                                    val newText = if (noteText.isBlank()) {
+                                        clipUrl
+                                    } else if (noteText.contains(clipUrl)) {
+                                        noteText
+                                    } else {
+                                        "$noteText\n$clipUrl"
+                                    }
+                                    noteText = newText
+                                    updateUrl(clipUrl)
+                                    clipboardUrl = null
+                                    onAutoPaste()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentPaste,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = "Paste link from clipboard: ${clipboardDomain ?: "link"}",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                                modifier = Modifier.padding(bottom = 10.dp)
                             )
-                        },
-                        trailingIcon = {
-                            Row {
-                                AnimatedVisibility(visible = localUrl.isNotEmpty()) {
-                                    IconButton(onClick = { updateUrl("") }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "Clear",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    }
+
+                    // Note Composer Surface (Title + Multi-line Input)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            // 1. Note Title Field (Optional, bold titleLarge borderless)
+                            TextField(
+                                value = noteTitle,
+                                onValueChange = { noteTitle = it },
+                                placeholder = {
+                                    Text(
+                                        text = "Note title (optional)...",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    )
+                                },
+                                textStyle = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                )
+                            )
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                                thickness = 0.8.dp,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+
+                            // 2. Note & Link Input Field (Multi-line borderless)
+                            TextField(
+                                value = noteText,
+                                onValueChange = {
+                                    noteText = it
+                                    updateUrl(it)
+                                    isValidUrl = true
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = "Paste a link or jot down thoughts with a URL...",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    )
+                                },
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                minLines = 3,
+                                maxLines = 6,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                )
+                            )
+                        }
+                    }
+
+                    // Validation Error Text
+                    AnimatedVisibility(visible = !isValidUrl) {
+                        Text(
+                            text = "Please include a valid URL in your note or link input",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 6.dp, top = 4.dp)
+                        )
+                    }
+
+                    // Live Detected Link Pill (Animated)
+                    AnimatedVisibility(
+                        visible = detectedUrl != null,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        detectedUrl?.let { url ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(32.dp),
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "URL Detected",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = detectedDomain ?: "Detected URL",
+                                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = MaterialTheme.colorScheme.secondaryContainer
+                                            ) {
+                                                Text(
+                                                    text = "Normalized",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = url,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
+
+                                    // Pin toggle button
+                                    FilterChip(
+                                        selected = isPinned,
+                                        onClick = { isPinned = !isPinned },
+                                        label = {
+                                            Text(
+                                                text = if (isPinned) "Pinned" else "Pin",
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = if (isPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                                                contentDescription = "Pin Note",
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
                                 }
                             }
-                        },
-                        supportingText = {
-                            if (!isValidUrl) {
-                                Text(
-                                    text = "Please enter a valid URL",
-                                    color = MaterialTheme.colorScheme.error
+                        }
+                    }
+
+                    // Folder & Tag Selector Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Folder Dropdown Button
+                        Box {
+                            val selectedFolderName = folders.find { it.id == selectedFolderId }?.name ?: "No Folder"
+                            AssistChip(
+                                onClick = { folderMenuExpanded = true },
+                                label = {
+                                    Text(
+                                        text = selectedFolderName,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (selectedFolderId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = if (selectedFolderId != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                            )
+
+                            DropdownMenu(
+                                expanded = folderMenuExpanded,
+                                onDismissRequest = { folderMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("None (No Folder)") },
+                                    onClick = {
+                                        selectedFolderId = null
+                                        folderMenuExpanded = false
+                                    }
+                                )
+                                folders.forEach { folder ->
+                                    DropdownMenuItem(
+                                        text = { Text(folder.name) },
+                                        onClick = {
+                                            selectedFolderId = folder.id
+                                            folderMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Add Tag Button
+                        AssistChip(
+                            onClick = { showAddTagDialog = true },
+                            label = { Text("Add Tag") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            )
+                        )
+                    }
+
+                    // Display Selected Tags (if any)
+                    if (selectedTags.isNotEmpty()) {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            selectedTags.forEach { tag ->
+                                InputChip(
+                                    selected = true,
+                                    onClick = {},
+                                    label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
+                                    trailingIcon = {
+                                        IconButton(
+                                            onClick = { selectedTags = selectedTags - tag },
+                                            modifier = Modifier.size(16.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove tag",
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                    }
                                 )
                             }
-                        },
-                        isError = !isValidUrl,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
-                                    onConfirm(localUrl, previewMetadata)
-                                } else {
-                                    isValidUrl = false
-                                }
-                            }
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
 
                     // Preview Area (Skeleton or Card)
                     AnimatedVisibility(
@@ -236,7 +592,7 @@ fun EnhancedAddLinkBottomSheet(
                         enter = expandVertically() + fadeIn(),
                         exit = shrinkVertically() + fadeOut()
                     ) {
-                        LinkPreviewSkeleton(modifier = Modifier.padding(bottom = 16.dp))
+                        LinkPreviewSkeleton(modifier = Modifier.padding(bottom = 12.dp))
                     }
 
                     val currentMetadata = previewMetadata
@@ -246,15 +602,33 @@ fun EnhancedAddLinkBottomSheet(
                         exit = shrinkVertically() + fadeOut()
                     ) {
                         currentMetadata?.let {
-                            LinkPreviewCard(metadata = it, modifier = Modifier.padding(bottom = 16.dp))
+                            LinkPreviewCard(metadata = it, modifier = Modifier.padding(bottom = 12.dp))
                         }
                     }
 
-                    // Add Button
+                    // Save Link & Note Button
                     Button(
                         onClick = {
-                            if (localUrl.isNotBlank() && isValidUrl(localUrl)) {
-                                onConfirm(localUrl, previewMetadata)
+                            val candidateUrl = detectedUrl
+                                ?: (if (isValidUrl(noteText.trim())) noteText.trim() else null)
+                                ?: (if (isValidUrl(localUrl.trim())) localUrl.trim() else null)
+
+                            if (candidateUrl != null && isValidUrl(candidateUrl)) {
+                                val titleToSave = noteTitle.trim().takeIf { it.isNotBlank() }
+                                val bodyToSave = noteText.trim().takeIf { it.isNotBlank() }
+                                if (onSaveLinkNote != null) {
+                                    onSaveLinkNote(
+                                        candidateUrl,
+                                        titleToSave,
+                                        bodyToSave,
+                                        isPinned,
+                                        selectedFolderId,
+                                        selectedTags,
+                                        previewMetadata
+                                    )
+                                } else {
+                                    onConfirm(candidateUrl, previewMetadata)
+                                }
                             } else {
                                 isValidUrl = false
                             }
@@ -262,27 +636,27 @@ fun EnhancedAddLinkBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        enabled = localUrl.isNotBlank(),
+                        enabled = noteText.isNotBlank() || localUrl.isNotBlank() || detectedUrl != null,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            imageVector = Icons.Default.BookmarkAdded,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Add Link",
+                            text = if (noteTitle.isNotBlank() || noteText.lines().size > 1) "Save Link & Note" else "Save Link",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                     }
 
                     // Recent Links
                     if (recentLinks.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -306,7 +680,7 @@ fun EnhancedAddLinkBottomSheet(
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 300.dp),
+                                    .heightIn(max = 240.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(recentLinks.take(10)) { link ->
@@ -348,6 +722,50 @@ fun EnhancedAddLinkBottomSheet(
                 )
             }
         }
+    }
+
+    // Add Tag Dialog
+    if (showAddTagDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddTagDialog = false
+                newTagName = ""
+            },
+            title = { Text("Add Tag") },
+            text = {
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { newTagName = it },
+                    label = { Text("Tag name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = newTagName.trim()
+                        if (trimmed.isNotBlank() && !selectedTags.contains(trimmed)) {
+                            selectedTags = selectedTags + trimmed
+                        }
+                        newTagName = ""
+                        showAddTagDialog = false
+                    }
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddTagDialog = false
+                        newTagName = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -438,9 +856,14 @@ private fun formatTimeAgo(timestamp: Long): String {
 }
 
 private fun isValidUrl(url: String): Boolean {
+    if (url.isBlank()) return false
     return try {
-        val pattern = android.util.Patterns.WEB_URL
-        pattern.matcher(url).matches() || url.startsWith("http://") || url.startsWith("https://")
+        val patternMatches = try {
+            android.util.Patterns.WEB_URL.matcher(url).matches()
+        } catch (e: Exception) {
+            url.matches(Regex("""https?://[a-zA-Z0-9.\-]+(?::\d+)?(?:/[^\s]*)?"""))
+        }
+        patternMatches || url.startsWith("http://") || url.startsWith("https://")
     } catch (e: Exception) {
         false
     }

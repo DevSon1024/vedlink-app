@@ -115,4 +115,19 @@ class LinkExtractor @Inject constructor() {
     fun extractSingleUrl(text: String): String? {
         return extractUrls(text).firstOrNull()
     }
+
+    /**
+     * Extracts a clean domain name from a URL string (e.g. "github.com").
+     */
+    fun extractDomain(url: String): String {
+        return try {
+            val withScheme = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
+            val uri = java.net.URI(withScheme)
+            uri.host?.removePrefix("www.")
+                ?: withScheme.removePrefix("https://").removePrefix("http://").removePrefix("www.").substringBefore('/').substringBefore('?')
+        } catch (e: Exception) {
+            val withoutScheme = url.removePrefix("http://").removePrefix("https://").removePrefix("www.")
+            withoutScheme.substringBefore('/').substringBefore('?')
+        }
+    }
 }
