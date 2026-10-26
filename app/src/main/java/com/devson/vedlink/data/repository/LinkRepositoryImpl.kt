@@ -95,6 +95,10 @@ class LinkRepositoryImpl @Inject constructor(
         linkDao.toggleFavorite(id, isFavorite)
     }
 
+    override suspend fun togglePin(linkId: Long, isPinned: Boolean, updatedAt: Long) {
+        linkDao.togglePin(linkId, isPinned, updatedAt)
+    }
+
     override suspend fun updateMetadataState(id: Int, state: MetadataState) {
         linkDao.updateMetadataState(id, state.name)
     }

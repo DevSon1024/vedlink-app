@@ -29,6 +29,7 @@ object DatabaseModule {
             VedLinkDatabase::class.java,
             VedLinkDatabase.DATABASE_NAME
         )
+            .addMigrations(VedLinkDatabase.MIGRATION_4_5)
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -24,7 +24,7 @@ data class LinkEntity(
     val provider: String,
     val folderId: Int?,
     val isFavorite: Boolean,
-    val isPinned: Boolean,
+    val isPinned: Boolean = false,
     val isArchived: Boolean,
     val isUnread: Boolean,
     val notes: String?,
@@ -32,9 +32,13 @@ data class LinkEntity(
     val notesUpdatedAt: Long?,
     val metadataState: String,
     val createdAt: Long,
-    val updatedAt: Long,
+    val updatedAt: Long = System.currentTimeMillis(),
     val lastUpdated: Long,
     val eTag: String?,
     val lastModified: String?,
-    val tags: String? // Comma-separated
+    val tags: String?, // Comma-separated
+    val noteTitle: String? = null,
+    val noteBodyMarkdown: String? = null,
+    val accentColorHex: Int? = null,
+    val readingTimeMinutes: Int? = null
 )

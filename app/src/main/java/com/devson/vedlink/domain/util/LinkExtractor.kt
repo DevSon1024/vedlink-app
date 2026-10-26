@@ -95,7 +95,12 @@ class LinkExtractor @Inject constructor() {
      */
     private fun isValidUrl(url: String): Boolean {
         return try {
-            Patterns.WEB_URL.matcher(url).matches() &&
+            val patternMatches = try {
+                Patterns.WEB_URL.matcher(url).matches()
+            } catch (e: Exception) {
+                url.matches(Regex("""https?://[a-zA-Z0-9.\-]+(?::\d+)?(?:/[^\s]*)?"""))
+            }
+            patternMatches &&
                     (url.startsWith("http://") || url.startsWith("https://")) &&
                     url.contains(".")
         } catch (e: Exception) {

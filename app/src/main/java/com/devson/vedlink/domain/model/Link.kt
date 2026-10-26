@@ -27,7 +27,11 @@ data class Link(
     val lastUpdated: Long = System.currentTimeMillis(),
     val eTag: String? = null,
     val lastModified: String? = null,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val noteTitle: String? = null,
+    val noteBodyMarkdown: String? = null,
+    val accentColorHex: Int? = null,
+    val readingTimeMinutes: Int? = null
 )
 
 // Extension functions for mapping
@@ -46,7 +50,7 @@ fun Link.toEntity() = com.devson.vedlink.data.local.entity.LinkEntity(
     isPinned = isPinned,
     isArchived = isArchived,
     isUnread = isUnread,
-    notes = notes,
+    notes = notes ?: noteBodyMarkdown,
     isPinnedNotes = isPinnedNotes,
     notesUpdatedAt = notesUpdatedAt,
     metadataState = metadataState.name,
@@ -55,7 +59,11 @@ fun Link.toEntity() = com.devson.vedlink.data.local.entity.LinkEntity(
     lastUpdated = lastUpdated,
     eTag = eTag,
     lastModified = lastModified,
-    tags = if (tags.isEmpty()) null else tags.joinToString(",")
+    tags = if (tags.isEmpty()) null else tags.joinToString(","),
+    noteTitle = noteTitle,
+    noteBodyMarkdown = noteBodyMarkdown ?: notes,
+    accentColorHex = accentColorHex,
+    readingTimeMinutes = readingTimeMinutes
 )
 
 fun com.devson.vedlink.data.local.entity.LinkEntity.toDomain() = Link(
@@ -77,7 +85,7 @@ fun com.devson.vedlink.data.local.entity.LinkEntity.toDomain() = Link(
     isPinned = isPinned,
     isArchived = isArchived,
     isUnread = isUnread,
-    notes = notes,
+    notes = notes ?: noteBodyMarkdown,
     isPinnedNotes = isPinnedNotes,
     notesUpdatedAt = notesUpdatedAt,
     metadataState = try {
@@ -90,5 +98,10 @@ fun com.devson.vedlink.data.local.entity.LinkEntity.toDomain() = Link(
     lastUpdated = lastUpdated,
     eTag = eTag,
     lastModified = lastModified,
-    tags = tags?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+    tags = tags?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+    noteTitle = noteTitle,
+    noteBodyMarkdown = noteBodyMarkdown ?: notes,
+    accentColorHex = accentColorHex,
+    readingTimeMinutes = readingTimeMinutes
 )
+

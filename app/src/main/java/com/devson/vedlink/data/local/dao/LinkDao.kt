@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LinkDao {
 
-    @Query("SELECT * FROM links ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links ORDER BY isPinned DESC, createdAt DESC")
     fun getAllLinks(): Flow<List<LinkEntity>>
 
     @Query("SELECT * FROM links WHERE id = :id")
@@ -19,22 +19,22 @@ interface LinkDao {
     @Query("SELECT * FROM links WHERE canonicalUrl = :canonicalUrl LIMIT 1")
     suspend fun getLinkByCanonicalUrl(canonicalUrl: String): LinkEntity?
 
-    @Query("SELECT * FROM links WHERE isFavorite = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE isFavorite = 1 ORDER BY isPinned DESC, createdAt DESC")
     fun getFavoriteLinks(): Flow<List<LinkEntity>>
 
-    @Query("SELECT * FROM links WHERE folderId = :folderId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE folderId = :folderId ORDER BY isPinned DESC, createdAt DESC")
     fun getLinksByFolder(folderId: Int): Flow<List<LinkEntity>>
 
-    @Query("SELECT * FROM links WHERE folderId IS NULL ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE folderId IS NULL ORDER BY isPinned DESC, createdAt DESC")
     fun getRootLinks(): Flow<List<LinkEntity>>
 
-    @Query("SELECT * FROM links WHERE tags LIKE '%' || :tag || '%' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE tags LIKE '%' || :tag || '%' ORDER BY isPinned DESC, createdAt DESC")
     fun getLinksByTag(tag: String): Flow<List<LinkEntity>>
 
     @Query("SELECT tags FROM links WHERE tags IS NOT NULL")
     fun getAllTagsRaw(): Flow<List<String>>
 
-    @Query("SELECT * FROM links WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR domain LIKE '%' || :query || '%' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM links WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%' OR noteTitle LIKE '%' || :query || '%' OR noteBodyMarkdown LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR domain LIKE '%' || :query || '%' ORDER BY isPinned DESC, createdAt DESC")
     fun searchLinks(query: String): Flow<List<LinkEntity>>
 
     @Query("UPDATE links SET metadataState = :state WHERE id = :id")
@@ -57,6 +57,9 @@ interface LinkDao {
 
     @Query("UPDATE links SET isFavorite = :isFavorite WHERE id = :id")
     suspend fun toggleFavorite(id: Int, isFavorite: Boolean)
+
+    @Query("UPDATE links SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :linkId")
+    suspend fun togglePin(linkId: Long, isPinned: Boolean, updatedAt: Long)
 
     @Query("SELECT COUNT(*) FROM links")
     suspend fun getLinksCount(): Int

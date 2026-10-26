@@ -19,6 +19,8 @@ interface LinkRepository {
     suspend fun deleteLink(link: Link)
     suspend fun deleteLinkById(id: Int)
     suspend fun toggleFavorite(id: Int, isFavorite: Boolean)
+    suspend fun togglePin(linkId: Long, isPinned: Boolean, updatedAt: Long = System.currentTimeMillis())
     suspend fun updateMetadataState(id: Int, state: MetadataState)
     suspend fun getLinksCount(): Int
 }
+
