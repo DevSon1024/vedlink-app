@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -245,25 +248,27 @@ fun FavoritesScreen(
                         if (!uiState.isPrefsLoaded) {
                             Box(modifier = Modifier.fillMaxSize())
                         } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(uiState.gridCellsCount),
+                            val staggeredColumns = when {
+                                uiState.gridCellsCount == 1 -> StaggeredGridCells.Adaptive(minSize = 260.dp)
+                                else -> StaggeredGridCells.Fixed(uiState.gridCellsCount)
+                            }
+
+                            LazyVerticalStaggeredGrid(
+                                columns = staggeredColumns,
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
                                     top = 8.dp,
                                     bottom = 80.dp
                                 ),
-                                horizontalArrangement = Arrangement.spacedBy(
-                                    if (uiState.gridCellsCount == 1) 0.dp else 10.dp
-                                ),
-                                verticalArrangement = Arrangement.spacedBy(
-                                    if (uiState.gridCellsCount == 1) 12.dp else 10.dp
-                                ),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalItemSpacing = 12.dp,
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 itemsIndexed(
                                     items = uiState.favoriteLinks,
-                                    key = { index, link -> "${link.id}_$index" }
+                                    key = { index, link -> "${link.id}_$index" },
+                                    contentType = { _, _ -> "favorite_link_card" }
                                 ) { index, link ->
                                     when {
                                         uiState.gridCellsCount == 1 -> {

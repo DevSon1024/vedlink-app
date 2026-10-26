@@ -8,6 +8,8 @@ import com.devson.vedlink.domain.model.Link
 import com.devson.vedlink.domain.model.ScrapedMetadata
 import com.devson.vedlink.domain.usecase.GetAllLinksUseCase
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
+import com.devson.vedlink.domain.usecase.ToggleFavoriteUseCase
+import com.devson.vedlink.domain.usecase.DeleteLinkUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.FlowPreview
@@ -19,6 +21,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val getAllLinksUseCase: GetAllLinksUseCase,
     private val saveLinkUseCase: SaveLinkUseCase,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val deleteLinkUseCase: DeleteLinkUseCase,
     private val themePreferences: ThemePreferences,
     private val metadataPipeline: MetadataPipeline
 ) : ViewModel() {
@@ -123,6 +127,27 @@ class HomeViewModel @Inject constructor(
                 .onFailure { exception ->
                     _uiEvent.emit(HomeUiEvent.ShowError(exception.message ?: "Failed to save link"))
                 }
+        }
+    }
+
+    fun toggleFavorite(id: Int, currentFavorite: Boolean) {
+        viewModelScope.launch {
+            try {
+                toggleFavoriteUseCase(id, currentFavorite)
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to update favorite"))
+            }
+        }
+    }
+
+    fun deleteLink(link: Link) {
+        viewModelScope.launch {
+            try {
+                deleteLinkUseCase(link)
+                _uiEvent.emit(HomeUiEvent.ShowSuccess("Link deleted"))
+            } catch (e: Exception) {
+                _uiEvent.emit(HomeUiEvent.ShowError(e.message ?: "Failed to delete link"))
+            }
         }
     }
 }

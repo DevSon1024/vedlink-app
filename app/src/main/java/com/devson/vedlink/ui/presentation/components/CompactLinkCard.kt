@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -69,13 +71,17 @@ fun CompactLinkCard(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
+    val baseSurface = MaterialTheme.colorScheme.surfaceContainerLow
+    val containerColor = remember(link.accentColorHex, link.isPinned, isSelected, baseSurface) {
+        when {
+            isSelected -> baseSurface
+            link.isPinned -> Color(ColorUtils.blendARGB(baseSurface.toArgb(), 0xFF7C5295.toInt(), 0.08f))
+            link.accentColorHex != null -> Color(ColorUtils.blendARGB(baseSurface.toArgb(), link.accentColorHex, 0.10f))
+            else -> baseSurface
+        }
     }
 
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = RoundedCornerShape(20.dp)
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -257,8 +263,9 @@ fun CompactLinkCard(
                 }
 
                 // Title
+                val displayTitle = link.noteTitle?.takeIf { it.isNotBlank() } ?: link.title ?: "Untitled Link"
                 Text(
-                    text = link.title ?: "Untitled Link",
+                    text = displayTitle,
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
                         lineHeight = 16.sp

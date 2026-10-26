@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -248,15 +252,18 @@ fun SavedLinksScreen(
                             Box(modifier = Modifier.fillMaxSize())
                         }
                         uiState.isLoading -> {
-                            // Shimmer skeleton based on current grid count
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(uiState.gridCellsCount),
+                            val shimmerColumns = when {
+                                uiState.gridCellsCount == 1 -> StaggeredGridCells.Adaptive(minSize = 260.dp)
+                                else -> StaggeredGridCells.Fixed(uiState.gridCellsCount)
+                            }
+                            LazyVerticalStaggeredGrid(
+                                columns = shimmerColumns,
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
                                     top = 8.dp, bottom = 80.dp
                                 ),
-                                horizontalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 0.dp else 10.dp),
-                                verticalArrangement = Arrangement.spacedBy(if (uiState.gridCellsCount == 1) 12.dp else 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalItemSpacing = 12.dp,
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 val shimmerCount = when (uiState.gridCellsCount) {
@@ -277,24 +284,26 @@ fun SavedLinksScreen(
                             EmptyState(modifier = Modifier.fillMaxSize())
                         }
                         else -> {
-                            //  UNIFIED GRID 
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(uiState.gridCellsCount),
+                            //  ADAPTIVE BENTO MASONRY GRID 
+                            val staggeredColumns = when {
+                                uiState.gridCellsCount == 1 -> StaggeredGridCells.Adaptive(minSize = 260.dp)
+                                else -> StaggeredGridCells.Fixed(uiState.gridCellsCount)
+                            }
+
+                            LazyVerticalStaggeredGrid(
+                                columns = staggeredColumns,
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp,
                                     top = 8.dp, bottom = 80.dp
                                 ),
-                                horizontalArrangement = Arrangement.spacedBy(
-                                    if (uiState.gridCellsCount == 1) 0.dp else 10.dp
-                                ),
-                                verticalArrangement = Arrangement.spacedBy(
-                                    if (uiState.gridCellsCount == 1) 12.dp else 10.dp
-                                ),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalItemSpacing = 12.dp,
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 itemsIndexed(
                                     items = uiState.links,
-                                    key = { index, link -> "${link.id}_$index" }
+                                    key = { index, link -> "${link.id}_$index" },
+                                    contentType = { _, _ -> "saved_link_card" }
                                 ) { index, link ->
                                     when {
                                         // count == 1 → full LinkCard (list style)

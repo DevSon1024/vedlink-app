@@ -21,78 +21,123 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ShimmerLinkCard(modifier: Modifier = Modifier) {
+    val outerShape = RoundedCornerShape(28.dp)
+    val innerShape = RoundedCornerShape(20.dp)
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = outerShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Left portion: Text elements
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            // Top Row (Date & Badge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Domain & Date
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                Box(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(10.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .shimmerEffect()
+                )
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .shimmerEffect()
+                )
+            }
+
+            // Note title & body shimmer lines
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(16.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .shimmerEffect()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(12.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .shimmerEffect()
+            )
+
+            // Inner nested container
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = innerShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier
-                            .size(14.dp)
+                            .fillMaxWidth()
+                            .height(110.dp)
+                            .shimmerEffect()
+                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(70.dp)
+                                .height(10.dp)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .shimmerEffect()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .height(14.dp)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .shimmerEffect()
+                        )
+                    }
+                }
+            }
+
+            // Bottom tags & actions shimmer
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .shimmerEffect()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
                             .clip(CircleShape)
                             .shimmerEffect()
                     )
                     Box(
                         modifier = Modifier
-                            .width(60.dp)
-                            .height(10.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
+                            .size(20.dp)
+                            .clip(CircleShape)
                             .shimmerEffect()
                     )
                 }
-
-                // Title
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .height(16.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .shimmerEffect()
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(16.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .shimmerEffect()
-                )
-
-                // Description snippet
-                Spacer(modifier = Modifier.height(2.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(12.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .shimmerEffect()
-                )
             }
-
-            // Right portion: Image thumbnail placeholder
-            Box(
-                modifier = Modifier
-                    .size(width = 100.dp, height = 90.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .shimmerEffect()
-            )
         }
     }
 }

@@ -158,8 +158,11 @@ fun MicroLinkCard(
             )
 
             // --- Title text at bottom ---
+            val displayTitle = remember(link.noteTitle, link.title) {
+                link.noteTitle?.takeIf { it.isNotBlank() } ?: link.title?.takeIf { it.isNotBlank() } ?: "Untitled"
+            }
             Text(
-                text = (link.title ?: "Untitled").take(20),
+                text = displayTitle.take(20),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,

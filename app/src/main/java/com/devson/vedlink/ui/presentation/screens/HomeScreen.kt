@@ -5,18 +5,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
-import androidx.compose.material3.carousel.CarouselItemScope
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,16 +18,14 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,13 +37,15 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.devson.vedlink.domain.model.Link
-import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
+import com.devson.vedlink.ui.presentation.components.LinkCard
+import com.devson.vedlink.ui.presentation.helper.copyToClipboard
+import com.devson.vedlink.ui.presentation.helper.shareLink
 import com.devson.vedlink.ui.viewmodel.HomeUiEvent
 import com.devson.vedlink.ui.viewmodel.HomeViewModel
 import com.devson.vedlink.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.Calendar
-import androidx.compose.ui.graphics.toArgb
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +63,8 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(isActive) {
         if (isActive) {
@@ -110,173 +105,166 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(top = paddingValues.calculateTopPadding())
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Adaptive(minSize = 260.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 80.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                modifier = Modifier.fillMaxSize()
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // --- Greeting Section ---
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "$greeting 👋",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp
-                            ),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = "Welcome to your VedLink dashboard",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                        )
-                    }
-                    
-                    // Profile/User Icon Placeholder
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        tonalElevation = 2.dp
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(24.dp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "$greeting 👋",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.5).sp
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Welcome to your VedLink dashboard",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        // Profile/User Icon Placeholder
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            tonalElevation = 2.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // --- Stats Section ---
+                if (!uiState.isLoading && uiState.showStats) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StatCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Total Links",
+                                count = uiState.totalLinks,
+                                icon = Icons.Default.Link,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                iconColor = MaterialTheme.colorScheme.primary,
+                                iconContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            )
+                            StatCard(
+                                modifier = Modifier.weight(1f),
+                                title = "Favorites",
+                                count = uiState.totalFavorites,
+                                icon = Icons.Default.StarOutline,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                iconColor = Color(0xFFFFEB3B),
+                                iconContainerColor = Color(0xFFFFEB3B).copy(alpha = 0.1f)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // --- Stats Section ---
-                AnimatedVisibility(
-                    visible = !uiState.isLoading && uiState.showStats,
-                    enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { 20 },
-                    exit = fadeOut(tween(400))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        StatCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Total Links",
-                            count = uiState.totalLinks,
-                            icon = Icons.Default.Link,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            iconColor = MaterialTheme.colorScheme.primary,
-                            iconContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                        )
-                        StatCard(
-                            modifier = Modifier.weight(1f),
-                            title = "Favorites",
-                            count = uiState.totalFavorites,
-                            icon = Icons.Default.StarOutline,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            iconColor = Color(0xFFFFEB3B),
-                            iconContainerColor = Color(0xFFFFEB3B).copy(alpha = 0.1f)
-                        )
-                    }
-                }
-
-                if (uiState.showStats) Spacer(modifier = Modifier.height(32.dp))
-
                 // --- Quick Actions Section ---
-                AnimatedVisibility(
-                    visible = uiState.showQuickActions,
-                    enter = fadeIn(tween(700)) + slideInVertically(tween(700)) { 20 },
-                    exit  = fadeOut(tween(400))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                    ) {
-                        Text(
-                            text = "Explore",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+                if (uiState.showQuickActions) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            Text(
+                                text = "Explore",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                ActionCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Default.FolderOpen,
-                                    title = "Folders",
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    onClick = onNavigateToFolders
-                                )
-                                ActionCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Default.StarOutline,
-                                    title = "Favorites",
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    onClick = onNavigateToFavorites
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                ActionCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.AutoMirrored.Filled.ManageSearch,
-                                    title = "Search",
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    onClick = onNavigateToSavedLinks
-                                )
-                                ActionCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Default.Lightbulb,
-                                    title = "Topics",
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    onClick = onNavigateToSearchTopics
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ActionCard(
+                                        modifier = Modifier.weight(1f),
+                                        icon = Icons.Default.FolderOpen,
+                                        title = "Folders",
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        onClick = onNavigateToFolders
+                                    )
+                                    ActionCard(
+                                        modifier = Modifier.weight(1f),
+                                        icon = Icons.Default.StarOutline,
+                                        title = "Favorites",
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        onClick = onNavigateToFavorites
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ActionCard(
+                                        modifier = Modifier.weight(1f),
+                                        icon = Icons.AutoMirrored.Filled.ManageSearch,
+                                        title = "Search",
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        onClick = onNavigateToSavedLinks
+                                    )
+                                    ActionCard(
+                                        modifier = Modifier.weight(1f),
+                                        icon = Icons.Default.Lightbulb,
+                                        title = "Topics",
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        onClick = onNavigateToSearchTopics
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
-                if (uiState.showQuickActions) Spacer(modifier = Modifier.height(32.dp))
-
-                // --- Jump Back In Section ---
-                AnimatedVisibility(
-                    visible = uiState.showRecentLinks && uiState.recentLinks.isNotEmpty(),
-                    enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { 20 },
-                    exit  = fadeOut(tween(400))
-                ) {
-                    Column {
+                // --- Recent Notes & Links Section ---
+                if (uiState.showRecentLinks && uiState.recentLinks.isNotEmpty()) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
+                                .padding(horizontal = 4.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Recent Links",
+                                text = "Recent Notes & Links",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -289,35 +277,39 @@ fun HomeScreen(
                                 )
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                        ) {
-                            itemsIndexed(
-                                items = uiState.recentLinks,
-                                key = { index, link -> "${link.id}_$index" }
-                            ) { index, link ->
-                                JumpBackInCard(
-                                    link = link,
-                                    onClick = { onNavigateToDetails(link.id) }
-                                )
+                    itemsIndexed(
+                        items = uiState.recentLinks,
+                        key = { index, link -> "${link.id}_$index" },
+                        contentType = { _, _ -> "home_recent_link_card" }
+                    ) { index, link ->
+                        LinkCard(
+                            modifier = Modifier.animateItem(),
+                            link = link,
+                            onClick = { onNavigateToDetails(link.id) },
+                            onFavoriteClick = {
+                                viewModel.toggleFavorite(link.id, link.isFavorite)
+                            },
+                            onMoreClick = {},
+                            onCopyClick = {
+                                copyToClipboard(context, link.url)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Link copied to clipboard",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            },
+                            onShareClick = {
+                                shareLink(context, link.url, link.title)
+                            },
+                            onDeleteClick = {
+                                viewModel.deleteLink(link)
                             }
-                            item {
-                                SeeAllCarouselCard(
-                                    onClick = onNavigateToSavedLinks
-                                )
-                            }
-                        }
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
