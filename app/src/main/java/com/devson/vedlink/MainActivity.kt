@@ -38,6 +38,7 @@ import com.devson.vedlink.ui.presentation.navigation.Screen
 import com.devson.vedlink.ui.theme.VedLinkTheme
 import com.devson.vedlink.ui.theme.AppThemePalette
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
                 var onNewFolderClickAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
                 val pagerState = rememberPagerState(pageCount = { 5 })
+                var scrollJob by remember { mutableStateOf<Job?>(null) }
                 val mainPages = remember {
                     listOf(
                         Screen.Home.route,
@@ -125,10 +127,11 @@ class MainActivity : ComponentActivity() {
                     currentRoute
                 }
 
-                // Handle back press to scroll to Home page if in main pager
+                // Handle back press to jump directly to Home page if in main pager
                 androidx.activity.compose.BackHandler(enabled = currentRoute == Screen.Home.route && pagerState.currentPage > 0) {
-                    scope.launch {
-                        pagerState.animateScrollToPage(0)
+                    scrollJob?.cancel()
+                    scrollJob = scope.launch {
+                        pagerState.scrollToPage(0)
                     }
                 }
 
@@ -162,15 +165,10 @@ class MainActivity : ComponentActivity() {
                                         val targetIndex = mainPages.indexOf(route)
                                         if (targetIndex != -1) {
                                             if (currentRoute != Screen.Home.route) {
-                                                navController.navigate(Screen.Home.route) {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
+                                                navController.popBackStack(Screen.Home.route, false)
                                             }
-                                            scope.launch {
+                                            scrollJob?.cancel()
+                                            scrollJob = scope.launch {
                                                 pagerState.scrollToPage(targetIndex)
                                             }
                                         }

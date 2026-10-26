@@ -136,10 +136,10 @@ fun NavGraph(
                         0 -> HomeScreen(
                             isActive = isActive,
                             onUpdateTopBarConfig = onUpdateConfig,
-                            onNavigateToSavedLinks = { scope.launch { pagerState.animateScrollToPage(1) } },
-                            onNavigateToFolders = { scope.launch { pagerState.animateScrollToPage(2) } },
-                            onNavigateToFavorites = { scope.launch { pagerState.animateScrollToPage(3) } },
-                            onNavigateToSettings = { scope.launch { pagerState.animateScrollToPage(4) } },
+                            onNavigateToSavedLinks = { scope.launch { pagerState.scrollToPage(1) } },
+                            onNavigateToFolders = { scope.launch { pagerState.scrollToPage(2) } },
+                            onNavigateToFavorites = { scope.launch { pagerState.scrollToPage(3) } },
+                            onNavigateToSettings = { scope.launch { pagerState.scrollToPage(4) } },
                             onNavigateToSearchTopics = { navController.navigate(Screen.SearchTopics.route) },
                             onNavigateToDetails = onNavigateToDetails
                         )

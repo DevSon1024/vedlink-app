@@ -16,6 +16,7 @@ local.properties
 keystore.properties
 *.env
 *.txt
+*jks
 vedlink-keystore
 update_details.md
 .kotlin

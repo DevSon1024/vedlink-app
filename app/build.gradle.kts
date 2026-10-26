@@ -1,3 +1,4 @@
+import java.io.File
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -27,8 +28,8 @@ android {
         applicationId = "com.devson.vedlink"
         minSdk = 26
         targetSdk = 35
-        versionCode = 104
-        versionName = "1.0.4"
+        versionCode = 105
+        versionName = "1.0.5"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -44,16 +45,28 @@ android {
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String?
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                val storeFilePath = keystoreProperties.getProperty("storeFile")
+                if (!storeFilePath.isNullOrBlank()) {
+                    val rawFile = File(storeFilePath)
+                    storeFile = when {
+                        rawFile.isAbsolute -> rawFile
+                        rootProject.file(storeFilePath).exists() -> rootProject.file(storeFilePath)
+                        file(storeFilePath).exists() -> file(storeFilePath)
+                        else -> rootProject.file(storeFilePath)
+                    }
+                }
             }
         }
     }
 
     buildTypes {
         release {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -145,7 +158,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
     // Room Database
-    val roomVersion = "2.6.1"
+//    val roomVersion = "2.6.1"
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
@@ -156,7 +169,7 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:$hiltVersion")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    // *** ADD THESE HILT WORKMANAGER DEPENDENCIES ***
+    // ADD THESE HILT WORKMANAGER DEPENDENCIES
     implementation("androidx.hilt:hilt-work:1.2.0")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
 

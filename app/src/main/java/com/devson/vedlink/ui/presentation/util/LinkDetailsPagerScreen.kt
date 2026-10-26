@@ -91,18 +91,24 @@ fun LinkDetailsPagerScreen(
     var showUrlActionsSheet by remember { mutableStateOf(false) }
     var showEditUrlDialog by remember { mutableStateOf(false) }
 
-    // Derive active page configurations to minimize redundant recompositions
-    val activeLinkId by remember(pagerState) {
-        derivedStateOf { linkIds[pagerState.currentPage] }
-    }
-    
-    val activeViewModel: LinkDetailsViewModel = hiltViewModel(key = "details_$activeLinkId")
-    val uiState by activeViewModel.uiState.collectAsState()
-    val folders by activeViewModel.folders.collectAsState()
-    
-    val currentUrl = remember(uiState.link?.url) { uiState.link?.url }
-    val pageText by remember(pagerState) {
-        derivedStateOf { "${pagerState.currentPage + 1} / ${linkIds.size}" }
+    // Dynamic page state and ViewModel observation
+    val pageStates = remember { mutableStateMapOf<Int, LinkDetailsUiState>() }
+    val pageViewModels = remember { mutableStateMapOf<Int, LinkDetailsViewModel>() }
+
+    val detailsViewModel: LinkDetailsViewModel = hiltViewModel()
+    val folders by detailsViewModel.folders.collectAsState()
+
+    val activePage = pagerState.currentPage.coerceIn(0, (linkIds.size - 1).coerceAtLeast(0))
+    val activeViewModel = pageViewModels[activePage]
+    val activeUiState = pageStates[activePage]
+    val activeLink = activeUiState?.link
+
+    val currentUrl = activeLink?.url
+    val pageText by remember(pagerState, linkIds.size) {
+        derivedStateOf {
+            if (linkIds.isEmpty()) "0 / 0"
+            else "${pagerState.currentPage + 1} / ${linkIds.size}"
+        }
     }
 
     val onPreviousPage = if (pagerState.currentPage > 0) {
@@ -146,7 +152,8 @@ fun LinkDetailsPagerScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { uiState.link?.url?.let { activeViewModel.extractReadabilityText(it) } }
+                        onClick = { activeLink?.url?.let { activeViewModel?.extractReadabilityText(it) } },
+                        enabled = activeLink?.url != null
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.MenuBook,
@@ -154,7 +161,8 @@ fun LinkDetailsPagerScreen(
                         )
                     }
                     IconButton(
-                        onClick = { activeViewModel.showQrCodeDialog(true) }
+                        onClick = { activeViewModel?.showQrCodeDialog(true) },
+                        enabled = activeLink != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.QrCode,
@@ -162,21 +170,26 @@ fun LinkDetailsPagerScreen(
                         )
                     }
                     IconButton(
-                        onClick = { activeViewModel.toggleFavorite() }
+                        onClick = { activeViewModel?.toggleFavorite() },
+                        enabled = activeLink != null
                     ) {
+                        val isFavorite = activeLink?.isFavorite == true
                         Icon(
-                            imageVector = if (uiState.link?.isFavorite == true)
+                            imageVector = if (isFavorite)
                                 Icons.Filled.Favorite
                             else
                                 Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (uiState.link?.isFavorite == true)
+                            tint = if (isFavorite)
                                 MaterialTheme.colorScheme.error
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { showDeleteDialog = true }) {
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        enabled = activeLink != null
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete"
@@ -319,7 +332,18 @@ fun LinkDetailsPagerScreen(
             val pageUiState by pageViewModel.uiState.collectAsState()
             val allTags by pageViewModel.allTags.collectAsState()
 
-            if (pageUiState.isLoading) {
+            DisposableEffect(pageIndex, pageViewModel) {
+                pageViewModels[pageIndex] = pageViewModel
+                onDispose {
+                    pageViewModels.remove(pageIndex)
+                }
+            }
+
+            SideEffect {
+                pageStates[pageIndex] = pageUiState
+            }
+
+            if (pageUiState.isLoading && pageUiState.link == null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -334,12 +358,12 @@ fun LinkDetailsPagerScreen(
                         link = link,
                         folders = folders,
                         paddingValues = paddingValues,
-                        onAssignFolder = { folderId -> pageViewModel.assignFolder(folderId); Unit },
-                        onAddTag = { tag -> pageViewModel.addTag(tag); Unit },
-                        onRemoveTag = { tag -> pageViewModel.removeTag(tag); Unit },
-                        onUpdateNotes = { notes -> pageViewModel.updateNotes(notes); Unit },
-                        onUrlCardClick = { showUrlActionsSheet = true; Unit },
-                        onImageClick = { showImageDialog = true; Unit },
+                        onAssignFolder = { folderId -> pageViewModel.assignFolder(folderId) },
+                        onAddTag = { tag -> pageViewModel.addTag(tag) },
+                        onRemoveTag = { tag -> pageViewModel.removeTag(tag) },
+                        onUpdateNotes = { notes -> pageViewModel.updateNotes(notes) },
+                        onUrlCardClick = { showUrlActionsSheet = true },
+                        onImageClick = { showImageDialog = true },
                         onImageLongClick = {
                             scope.launch {
                                 downloadImage(
@@ -348,7 +372,6 @@ fun LinkDetailsPagerScreen(
                                     fileName = link.title ?: "image"
                                 )
                             }
-                            Unit
                         },
                         allTags = allTags
                     )
@@ -366,7 +389,7 @@ fun LinkDetailsPagerScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        activeViewModel.deleteLink()
+                        activeViewModel?.deleteLink()
                         showDeleteDialog = false
                         onNavigateBack()
                     },
@@ -386,7 +409,9 @@ fun LinkDetailsPagerScreen(
     }
 
     // Full Image Dialog with Download Option
-    if (showImageDialog && !uiState.link?.imageUrl.isNullOrBlank()) {
+    if (showImageDialog && !activeLink?.imageUrl.isNullOrBlank()) {
+        val imageUrl = activeLink?.imageUrl ?: ""
+        val imageTitle = activeLink?.title ?: "image"
         Dialog(onDismissRequest = { showImageDialog = false }) {
             Card(
                 modifier = Modifier
@@ -402,7 +427,7 @@ fun LinkDetailsPagerScreen(
                     ) {
                         coil.compose.AsyncImage(
                             model = coil.request.ImageRequest.Builder(context)
-                                .data(uiState.link?.imageUrl)
+                                .data(imageUrl)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = "Full Image",
@@ -422,13 +447,11 @@ fun LinkDetailsPagerScreen(
                         FilledTonalButton(
                             onClick = {
                                 scope.launch {
-                                    uiState.link?.let { link ->
-                                        downloadImage(
-                                            context = context,
-                                            imageUrl = link.imageUrl!!,
-                                            fileName = link.title ?: "image"
-                                        )
-                                    }
+                                    downloadImage(
+                                        context = context,
+                                        imageUrl = imageUrl,
+                                        fileName = imageTitle
+                                    )
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -455,7 +478,8 @@ fun LinkDetailsPagerScreen(
     }
 
     // URL Actions Bottom Sheet
-    if (showUrlActionsSheet && uiState.link != null) {
+    if (showUrlActionsSheet && activeLink != null) {
+        val linkUrl = activeLink.url
         ModalBottomSheet(
             onDismissRequest = { showUrlActionsSheet = false },
             sheetState = rememberModalBottomSheetState()
@@ -479,7 +503,7 @@ fun LinkDetailsPagerScreen(
                         copyToClipboard(
                             clipboardManager,
                             context,
-                            uiState.link!!.url,
+                            linkUrl,
                             "URL"
                         )
                         showUrlActionsSheet = false
@@ -498,9 +522,9 @@ fun LinkDetailsPagerScreen(
     }
 
     // Edit URL Dialog
-    if (showEditUrlDialog && uiState.link != null) {
-        val originalUrl = uiState.link!!.url
-        var urlInput by remember { mutableStateOf(originalUrl) }
+    if (showEditUrlDialog && activeLink != null) {
+        val originalUrl = activeLink.url
+        var urlInput by remember(originalUrl) { mutableStateOf(originalUrl) }
         var isError by remember { mutableStateOf(false) }
 
         AlertDialog(
@@ -542,7 +566,7 @@ fun LinkDetailsPagerScreen(
                 TextButton(
                     onClick = {
                         if (urlInput.isNotBlank()) {
-                            activeViewModel.updateUrl(urlInput)
+                            activeViewModel?.updateUrl(urlInput)
                             showEditUrlDialog = false
                         } else {
                             isError = true
@@ -561,13 +585,14 @@ fun LinkDetailsPagerScreen(
     }
 
     // QR Code Dialog
-    if (uiState.showQrCodeDialog && uiState.link != null) {
-        val qrBitmap = remember(uiState.link!!.url) {
-            generateQrCode(uiState.link!!.url, 512)
+    if (activeUiState?.showQrCodeDialog == true && activeLink != null) {
+        val qrUrl = activeLink.url
+        val qrBitmap = remember(qrUrl) {
+            generateQrCode(qrUrl, 512)
         }
 
         AlertDialog(
-            onDismissRequest = { activeViewModel.showQrCodeDialog(false) },
+            onDismissRequest = { activeViewModel?.showQrCodeDialog(false) },
             title = {
                 Text(
                     text = "QR Code",
@@ -601,7 +626,7 @@ fun LinkDetailsPagerScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = uiState.link!!.url,
+                        text = qrUrl,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -611,7 +636,7 @@ fun LinkDetailsPagerScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { activeViewModel.showQrCodeDialog(false) }) {
+                TextButton(onClick = { activeViewModel?.showQrCodeDialog(false) }) {
                     Text("Close")
                 }
             }
@@ -619,7 +644,7 @@ fun LinkDetailsPagerScreen(
     }
 
     // Readability Mode Overlay
-    if (uiState.isReadingModeActive && uiState.link != null) {
+    if (activeUiState?.isReadingModeActive == true && activeLink != null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -636,7 +661,7 @@ fun LinkDetailsPagerScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { activeViewModel.exitReadingMode() }) {
+                    IconButton(onClick = { activeViewModel?.exitReadingMode() }) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Exit Reading Mode"
@@ -653,7 +678,7 @@ fun LinkDetailsPagerScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                if (uiState.isExtractingReaderText) {
+                if (activeUiState.isExtractingReaderText) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -679,20 +704,20 @@ fun LinkDetailsPagerScreen(
                             .padding(vertical = 16.dp)
                     ) {
                         Text(
-                            text = uiState.link?.title ?: "No Title",
+                            text = activeLink.title ?: "No Title",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = uiState.link?.domain ?: "",
+                            text = activeLink.domain ?: "",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = uiState.readabilityText ?: "",
+                            text = activeUiState.readabilityText ?: "",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
