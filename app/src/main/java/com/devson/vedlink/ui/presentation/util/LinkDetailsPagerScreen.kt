@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.PushPin
+import com.devson.vedlink.ui.viewmodel.SaveState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -132,18 +135,63 @@ fun LinkDetailsPagerScreen(
         }
     }
 
+    // Flush on system back navigation
+    BackHandler {
+        activeViewModel?.flushPendingSave()
+        onNavigateBack()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Link Details",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Column {
+                        val headerTitle = activeUiState?.noteTitle?.takeIf { it.isNotBlank() }
+                            ?: activeLink?.title?.takeIf { it.isNotBlank() }
+                            ?: "Link Note"
+                        Text(
+                            text = headerTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (activeUiState?.saveState == SaveState.Saving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(9.dp),
+                                    strokeWidth = 1.2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Saving...",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDone,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "Saved",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        activeViewModel?.flushPendingSave()
+                        onNavigateBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -151,6 +199,17 @@ fun LinkDetailsPagerScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { activeViewModel?.togglePin() },
+                        enabled = activeLink != null
+                    ) {
+                        val isPinned = activeUiState?.isPinned == true || activeLink?.isPinned == true
+                        Icon(
+                            imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = if (isPinned) "Unpin Note" else "Pin Note",
+                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(
                         onClick = { activeLink?.url?.let { activeViewModel?.extractReadabilityText(it) } },
                         enabled = activeLink?.url != null
@@ -356,6 +415,11 @@ fun LinkDetailsPagerScreen(
                 pageUiState.link?.let { link ->
                     LinkDetailsScreen(
                         link = link,
+                        noteTitle = pageUiState.noteTitle,
+                        noteBodyMarkdown = pageUiState.noteBodyMarkdown,
+                        onNoteTitleChange = { pageViewModel.onNoteTitleChanged(it) },
+                        onNoteBodyChange = { pageViewModel.onNoteBodyChanged(it) },
+                        onAppendToNote = { pageViewModel.appendToNoteBody(it) },
                         folders = folders,
                         paddingValues = paddingValues,
                         onAssignFolder = { folderId -> pageViewModel.assignFolder(folderId) },
@@ -371,6 +435,15 @@ fun LinkDetailsPagerScreen(
                                     imageUrl = link.imageUrl ?: "",
                                     fileName = link.title ?: "image"
                                 )
+                            }
+                        },
+                        onRefreshMetadata = { pageViewModel.refreshMetadata() },
+                        onTogglePin = { pageViewModel.togglePin() },
+                        onOpenUrl = { currentUrl?.let { openInBrowser(context, it) } },
+                        onShareUrl = { currentUrl?.let { shareLink(context, it) } },
+                        onCopyUrl = {
+                            currentUrl?.let {
+                                copyToClipboard(clipboardManager, context, it, "URL")
                             }
                         },
                         allTags = allTags

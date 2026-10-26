@@ -23,5 +23,17 @@ enum class WebsiteProvider {
     LETTERBOXD,
     NETFLIX,
     PRIME_VIDEO,
-    GENERIC
+    GENERIC;
+
+    val isVideo: Boolean
+        get() = this == YOUTUBE || this == NETFLIX || this == PRIME_VIDEO
+
+    val isCode: Boolean
+        get() = this == GITHUB || this == STACK_OVERFLOW
+
+    val isArticle: Boolean
+        get() = this == MEDIUM || this == DEV_TO || this == WIKIPEDIA
+
+    val isSocial: Boolean
+        get() = this == REDDIT || this == INSTAGRAM || this == THREADS || this == FACEBOOK || this == LINKEDIN || this == PINTEREST || this == TIKTOK
 }
