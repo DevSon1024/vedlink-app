@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,10 +56,10 @@ fun AppearanceSettingsScreen(
     onNavigateBack: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val isDark        by settingsViewModel.isDarkTheme.collectAsState()
-    val dynamicColor  by settingsViewModel.dynamicColor.collectAsState()
-    val selectedPalette by settingsViewModel.selectedPalette.collectAsState()
-    val navBarTransparent by settingsViewModel.isNavBarTransparent.collectAsState()
+    val isDark        by settingsViewModel.isDarkTheme.collectAsStateWithLifecycle()
+    val dynamicColor  by settingsViewModel.dynamicColor.collectAsStateWithLifecycle()
+    val selectedPalette by settingsViewModel.selectedPalette.collectAsStateWithLifecycle()
+    val navBarTransparent by settingsViewModel.isNavBarTransparent.collectAsStateWithLifecycle()
 
     // Status bar color handling
     val view = LocalView.current

@@ -1,6 +1,7 @@
 package com.devson.vedlink.ui.presentation.screens
 
 import android.app.Activity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -48,7 +49,7 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val isDark by settingsViewModel.isDarkTheme.collectAsState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsStateWithLifecycle()
 
     // Status bar color handling
     val view = LocalView.current

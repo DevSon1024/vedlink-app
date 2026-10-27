@@ -2,6 +2,7 @@ package com.devson.vedlink.ui.presentation.screens
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -71,7 +72,7 @@ fun FoldersScreen(
     onShowNewFolderAction: (((() -> Unit)?) -> Unit) = {},
     viewModel: FoldersViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

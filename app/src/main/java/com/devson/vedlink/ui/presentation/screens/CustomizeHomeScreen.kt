@@ -1,6 +1,7 @@
 package com.devson.vedlink.ui.presentation.screens
 
 import android.app.Activity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -31,8 +32,8 @@ fun CustomizeHomeScreen(
     onNavigateBack: () -> Unit,
     viewModel: CustomizeHomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val isDark by viewModel.isDarkTheme.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
 
     // Status bar color handling
     val view = LocalView.current

@@ -1,6 +1,7 @@
 package com.devson.vedlink.ui.presentation.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
@@ -59,7 +60,7 @@ fun SavedLinksScreen(
     onNavigateToDetails: (linkId: Int, linkIds: List<Int>) -> Unit,
     viewModel: SavedLinksViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showViewSettings by rememberSaveable { mutableStateOf(false) }
@@ -426,7 +427,7 @@ fun SavedLinksScreen(
     // Tag Editing dialog with Smart Recommendations
     val editingTagsLink = uiState.editingTagsLink
     if (editingTagsLink != null) {
-        val allTags by viewModel.allTags.collectAsState()
+        val allTags by viewModel.allTags.collectAsStateWithLifecycle()
         var newTagName by remember { mutableStateOf("") }
 
         AlertDialog(

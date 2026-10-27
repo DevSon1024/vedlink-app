@@ -1,6 +1,7 @@
 package com.devson.vedlink.ui.presentation.screens
 
 import android.app.Activity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,9 +45,9 @@ fun SettingsScreen(
     onNavigateToCustomizeHome: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val isNavBarTransparent by viewModel.isNavBarTransparent.collectAsState()
-    val isDark by viewModel.isDarkTheme.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isNavBarTransparent by viewModel.isNavBarTransparent.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkTheme.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }

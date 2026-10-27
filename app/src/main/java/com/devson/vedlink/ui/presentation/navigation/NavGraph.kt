@@ -3,6 +3,8 @@ package com.devson.vedlink.ui.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -39,52 +41,64 @@ fun NavGraph(
         startDestination = Screen.Home.route,
         enterTransition = {
             val targetRoute = targetState.destination.route
-            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route)) {
+            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route || targetRoute == Screen.SearchTopics.route)) {
                 slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(350)
-                ) + fadeIn(animationSpec = tween(350))
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + scaleIn(
+                    initialScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                )
             } else {
                 scaleIn(
-                    initialScale = 0.96f,
-                    animationSpec = tween(250)
-                ) + fadeIn(animationSpec = tween(250))
+                    initialScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
             }
         },
         exitTransition = {
             val targetRoute = targetState.destination.route
-            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route)) {
-                fadeOut(animationSpec = tween(250))
+            if (targetRoute != null && (targetRoute.startsWith("link_details") || targetRoute == Screen.About.route || targetRoute == Screen.Appearance.route || targetRoute == Screen.CustomizeHome.route || targetRoute == Screen.SearchTopics.route)) {
+                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + scaleOut(
+                    targetScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                )
             } else {
                 scaleOut(
-                    targetScale = 0.96f,
-                    animationSpec = tween(250)
-                ) + fadeOut(animationSpec = tween(250))
+                    targetScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
             }
         },
         popEnterTransition = {
             val initialRoute = initialState.destination.route
-            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route)) {
-                fadeIn(animationSpec = tween(250))
+            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route || initialRoute == Screen.SearchTopics.route)) {
+                fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + scaleIn(
+                    initialScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                )
             } else {
                 scaleIn(
-                    initialScale = 0.96f,
-                    animationSpec = tween(250)
-                ) + fadeIn(animationSpec = tween(250))
+                    initialScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
             }
         },
         popExitTransition = {
             val initialRoute = initialState.destination.route
-            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route)) {
+            if (initialRoute != null && (initialRoute.startsWith("link_details") || initialRoute == Screen.About.route || initialRoute == Screen.Appearance.route || initialRoute == Screen.CustomizeHome.route || initialRoute == Screen.SearchTopics.route)) {
                 slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(350)
-                ) + fadeOut(animationSpec = tween(350))
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + scaleOut(
+                    targetScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                )
             } else {
                 scaleOut(
-                    targetScale = 0.96f,
-                    animationSpec = tween(250)
-                ) + fadeOut(animationSpec = tween(250))
+                    targetScale = 0.94f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
             }
         }
     ) {
@@ -188,7 +202,12 @@ fun NavGraph(
         }
 
         composable(Screen.SearchTopics.route) {
-            SearchTopicsScreen(onNavigateBack = { navController.popBackStack() })
+            SearchTopicsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetails = { linkId, linkIds ->
+                    navController.navigate(Screen.LinkDetailsPager.createRoute(linkId, linkIds))
+                }
+            )
         }
 
         // Legacy single-link details (kept for back-compat from FavoritesScreen / FoldersScreen)

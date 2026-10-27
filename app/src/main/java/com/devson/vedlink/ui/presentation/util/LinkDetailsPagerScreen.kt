@@ -12,6 +12,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -86,7 +87,7 @@ fun LinkDetailsPagerScreen(
 
     // ViewModels for dark mode setting and folders
     val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val isDark by settingsViewModel.isDarkTheme.collectAsState()
+    val isDark by settingsViewModel.isDarkTheme.collectAsStateWithLifecycle()
 
     // Dialog trigger states
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -99,7 +100,7 @@ fun LinkDetailsPagerScreen(
     val pageViewModels = remember { mutableStateMapOf<Int, LinkDetailsViewModel>() }
 
     val detailsViewModel: LinkDetailsViewModel = hiltViewModel()
-    val folders by detailsViewModel.folders.collectAsState()
+    val folders by detailsViewModel.folders.collectAsStateWithLifecycle()
 
     val activePage = pagerState.currentPage.coerceIn(0, (linkIds.size - 1).coerceAtLeast(0))
     val activeViewModel = pageViewModels[activePage]
@@ -388,8 +389,8 @@ fun LinkDetailsPagerScreen(
                 }
             }
 
-            val pageUiState by pageViewModel.uiState.collectAsState()
-            val allTags by pageViewModel.allTags.collectAsState()
+            val pageUiState by pageViewModel.uiState.collectAsStateWithLifecycle()
+            val allTags by pageViewModel.allTags.collectAsStateWithLifecycle()
 
             DisposableEffect(pageIndex, pageViewModel) {
                 pageViewModels[pageIndex] = pageViewModel
