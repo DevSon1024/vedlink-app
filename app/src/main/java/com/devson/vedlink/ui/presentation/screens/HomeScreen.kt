@@ -37,6 +37,12 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.devson.vedlink.domain.model.Link
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.devson.vedlink.domain.util.LinkExtractor
+import java.net.URI
 import com.devson.vedlink.ui.presentation.components.LinkCard
 import com.devson.vedlink.ui.presentation.helper.copyToClipboard
 import com.devson.vedlink.ui.presentation.helper.shareLink
@@ -58,6 +64,7 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToSearchTopics: () -> Unit = {},
     onNavigateToDetails: (Int) -> Unit = {},
+    onOpenAddLink: ((String?) -> Unit)? = null,
     viewModel: HomeViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -65,6 +72,30 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    var clipboardDetectedUrl by remember { mutableStateOf<String?>(null) }
+    var dismissedUrl by remember { mutableStateOf<String?>(null) }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        try {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            if (clipboard?.hasPrimaryClip() == true) {
+                val clip = clipboard.primaryClip
+                if (clip != null && clip.itemCount > 0) {
+                    val text = clip.getItemAt(0)?.coerceToText(context)?.toString()?.trim()
+                    if (!text.isNullOrBlank()) {
+                        val url = LinkExtractor().extractUrls(text).firstOrNull()
+                            ?: if (text.startsWith("http://") || text.startsWith("https://")) text else null
+                        if (!url.isNullOrBlank() && url != dismissedUrl && url != uiState.recentLinks.firstOrNull()?.url) {
+                            clipboardDetectedUrl = url
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Safe clipboard inspection
+        }
+    }
 
     LaunchedEffect(isActive) {
         if (isActive) {
@@ -156,6 +187,150 @@ fun HomeScreen(
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(24.dp)
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // --- Smart Clipboard URL Banner ---
+                clipboardDetectedUrl?.let { detectedUrl ->
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(tween(250)) + expandVertically(tween(250)),
+                            exit = fadeOut(tween(200)) + shrinkVertically(tween(200))
+                        ) {
+                            ElevatedCard(
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.ContentPaste,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "Link detected on clipboard",
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = try {
+                                                        URI(detectedUrl).host?.removePrefix("www.") ?: detectedUrl
+                                                    } catch (e: Exception) {
+                                                        detectedUrl
+                                                    },
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                dismissedUrl = detectedUrl
+                                                clipboardDetectedUrl = null
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Dismiss",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        FilledTonalButton(
+                                            onClick = {
+                                                val urlToOpen = detectedUrl
+                                                dismissedUrl = urlToOpen
+                                                clipboardDetectedUrl = null
+                                                onOpenAddLink?.invoke(urlToOpen)
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.NoteAdd,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Save + Add Note",
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val urlToSave = detectedUrl
+                                                dismissedUrl = urlToSave
+                                                clipboardDetectedUrl = null
+                                                viewModel.saveLink(urlToSave)
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.BookmarkAdd,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Quick Save",
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

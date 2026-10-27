@@ -36,6 +36,7 @@
             android:name=".data.receiver.LinkReceiverActivity"
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:noHistory="true"

@@ -50,7 +50,7 @@ class LinkSaveService : Service() {
 
             serviceScope.launch {
                 processingMutex.withLock {
-                    processSharedText(sharedText, startId)
+                    processSharedText(intent, startId)
                 }
             }
         } else {
@@ -61,7 +61,16 @@ class LinkSaveService : Service() {
         return START_REDELIVER_INTENT
     }
 
-    private suspend fun processSharedText(sharedText: String, startId: Int) {
+    private suspend fun processSharedText(intent: Intent, startId: Int) {
+        val sharedText = intent.getStringExtra(EXTRA_TEXT) ?: ""
+        val noteTitle = intent.getStringExtra(EXTRA_NOTE_TITLE)
+        val noteBody = intent.getStringExtra(EXTRA_NOTE_BODY)
+        val isPinned = intent.getBooleanExtra(EXTRA_IS_PINNED, false)
+        val folderId = if (intent.hasExtra(EXTRA_FOLDER_ID)) {
+            val fId = intent.getIntExtra(EXTRA_FOLDER_ID, -1)
+            if (fId != -1) fId else null
+        } else null
+
         try {
             val urls = linkExtractor.extractUrls(sharedText)
 
@@ -77,7 +86,14 @@ class LinkSaveService : Service() {
             // Process each URL independently
             urls.forEach { url ->
                 try {
-                    val result = saveLinkUseCase(url, checkDuplicate = true)
+                    val result = saveLinkUseCase(
+                        url = url,
+                        noteTitle = noteTitle,
+                        noteBodyMarkdown = noteBody,
+                        isPinned = isPinned,
+                        folderId = folderId,
+                        checkDuplicate = true
+                    )
                     result.onSuccess { saveResult ->
                         when (saveResult.status) {
                             SaveStatus.NEWLY_SAVED -> newlySavedCount++
@@ -170,5 +186,9 @@ class LinkSaveService : Service() {
 
     companion object {
         const val EXTRA_TEXT = "extra_text"
+        const val EXTRA_NOTE_TITLE = "extra_note_title"
+        const val EXTRA_NOTE_BODY = "extra_note_body"
+        const val EXTRA_IS_PINNED = "extra_is_pinned"
+        const val EXTRA_FOLDER_ID = "extra_folder_id"
     }
 }

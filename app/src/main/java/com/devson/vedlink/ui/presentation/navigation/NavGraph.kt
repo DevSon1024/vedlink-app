@@ -29,7 +29,8 @@ fun NavGraph(
     navController: NavHostController,
     pagerState: PagerState,
     onNavigateToDetails: (Int) -> Unit,
-    onShowNewFolderAction: (((() -> Unit)?) -> Unit)
+    onShowNewFolderAction: (((() -> Unit)?) -> Unit),
+    onOpenAddLink: ((String?) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
 
@@ -141,7 +142,8 @@ fun NavGraph(
                             onNavigateToFavorites = { scope.launch { pagerState.scrollToPage(3) } },
                             onNavigateToSettings = { scope.launch { pagerState.scrollToPage(4) } },
                             onNavigateToSearchTopics = { navController.navigate(Screen.SearchTopics.route) },
-                            onNavigateToDetails = onNavigateToDetails
+                            onNavigateToDetails = onNavigateToDetails,
+                            onOpenAddLink = onOpenAddLink
                         )
                         1 -> SavedLinksScreen(
                             isActive = isActive,

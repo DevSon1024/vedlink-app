@@ -7,10 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.ContentPasteGo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,20 +25,21 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ExpandableMultiFab(
     onAddLinkClick: () -> Unit,
-    onAddTopicClick: () -> Unit,
+    onQuickPasteClick: (() -> Unit)? = null,
+    onAddTopicClick: (() -> Unit)? = null,
     onNewFolderClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Rotate main FAB icon
+    // Rotate main FAB icon with spring physics
     val rotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
-        label = "rotation"
+        label = "fabRotation"
     )
 
     Column(
@@ -45,14 +47,17 @@ fun ExpandableMultiFab(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Mini FABs (Shown when expanded)
+        // Mini Action FABs (Shown when expanded)
         AnimatedVisibility(
             visible = isExpanded,
-            enter = fadeIn(tween(200)) + slideInVertically(
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
+            enter = fadeIn(tween(180)) + slideInVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
                 initialOffsetY = { it / 2 }
             ),
-            exit = fadeOut(tween(150)) + slideOutVertically(
+            exit = fadeOut(tween(140)) + slideOutVertically(
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
                 targetOffsetY = { it / 2 }
             )
@@ -61,136 +66,55 @@ fun ExpandableMultiFab(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // "New Folder" option (Label + Mini FAB)
+                // "New Folder" option (if supported by active screen)
                 if (onNewFolderClick != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.shadow(2.dp, RoundedCornerShape(8.dp)),
-                            tonalElevation = 2.dp
-                        ) {
-                            Text(
-                                text = "New Folder",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .clickable {
-                                        isExpanded = false
-                                        onNewFolderClick()
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                    FabActionItem(
+                        label = "New Folder",
+                        icon = Icons.Default.CreateNewFolder,
+                        onClick = {
+                            isExpanded = false
+                            onNewFolderClick()
                         }
-                        SmallFloatingActionButton(
-                            onClick = {
-                                isExpanded = false
-                                onNewFolderClick()
-                            },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            shape = CircleShape
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CreateNewFolder,
-                                contentDescription = "New Folder",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                    )
                 }
 
-                // "Add Topic" option (Label + Mini FAB)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.shadow(2.dp, RoundedCornerShape(8.dp)),
-                        tonalElevation = 2.dp
-                    ) {
-                        Text(
-                            text = "Add Topic",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .clickable {
-                                    isExpanded = false
-                                    onAddTopicClick()
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                    SmallFloatingActionButton(
+                // "Add Topic" option (if provided)
+                if (onAddTopicClick != null) {
+                    FabActionItem(
+                        label = "Add Topic",
+                        icon = Icons.Filled.Lightbulb,
                         onClick = {
                             isExpanded = false
                             onAddTopicClick()
-                        },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        shape = CircleShape
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Lightbulb,
-                            contentDescription = "Add Search Topic",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                        }
+                    )
                 }
 
-                // "Add Link" option (Label + Mini FAB)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.shadow(2.dp, RoundedCornerShape(8.dp)),
-                        tonalElevation = 2.dp
-                    ) {
-                        Text(
-                            text = "Add Link",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .clickable {
-                                    isExpanded = false
-                                    onAddLinkClick()
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                    SmallFloatingActionButton(
+                // "Quick Paste URL" option (Immediately saves & unfurls clipboard URL)
+                if (onQuickPasteClick != null) {
+                    FabActionItem(
+                        label = "Quick Paste URL",
+                        icon = Icons.Default.ContentPasteGo,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         onClick = {
                             isExpanded = false
-                            onAddLinkClick()
-                        },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        shape = CircleShape
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Link,
-                            contentDescription = "Add Link",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                            onQuickPasteClick()
+                        }
+                    )
                 }
+
+                // "New Link-Note" option (Opens note + link composer)
+                FabActionItem(
+                    label = "New Link-Note",
+                    icon = Icons.AutoMirrored.Filled.NoteAdd,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = {
+                        isExpanded = false
+                        onAddLinkClick()
+                    }
+                )
             }
         }
 
@@ -198,20 +122,65 @@ fun ExpandableMultiFab(
         FloatingActionButton(
             onClick = { isExpanded = !isExpanded },
             modifier = Modifier
-                .size(64.dp)
-                .shadow(12.dp, CircleShape),
+                .size(60.dp)
+                .shadow(8.dp, CircleShape),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = CircleShape
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Expand Options",
+                contentDescription = if (isExpanded) "Close options" else "Expand options",
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(28.dp)
                     .rotate(rotation)
             )
         }
     }
 }
 
+@Composable
+private fun FabActionItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.shadow(2.dp, RoundedCornerShape(12.dp)),
+            tonalElevation = 3.dp
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = containerColor,
+            contentColor = contentColor,
+            shape = CircleShape
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}

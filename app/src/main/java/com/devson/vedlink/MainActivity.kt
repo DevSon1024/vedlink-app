@@ -27,12 +27,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devson.vedlink.data.preferences.ThemePreferences
 import com.devson.vedlink.data.network.scraper.MetadataPipeline
+import android.content.ClipboardManager
+import android.content.Context
 import com.devson.vedlink.domain.repository.FolderRepository
 import com.devson.vedlink.domain.repository.LinkRepository
 import com.devson.vedlink.domain.usecase.SaveLinkUseCase
 import com.devson.vedlink.domain.usecase.AddSearchTopicUseCase
+import com.devson.vedlink.domain.util.LinkExtractor
 import com.devson.vedlink.ui.presentation.components.EnhancedAddLinkBottomSheet
 import com.devson.vedlink.ui.presentation.components.ExpandableMultiFab
+import com.devson.vedlink.ui.presentation.components.ModernBoxedBottomNavBar
 import com.devson.vedlink.ui.presentation.components.VedLinkBottomNavBar
 import com.devson.vedlink.ui.presentation.navigation.NavGraph
 import com.devson.vedlink.ui.presentation.navigation.Screen
@@ -110,6 +114,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 val snackbarHostState = remember { SnackbarHostState() }
                 var showAddDialog by remember { mutableStateOf(false) }
+                var prefillAddUrl by remember { mutableStateOf<String?>(null) }
                 var showAddTopicDialog by remember { mutableStateOf(false) }
                 var onNewFolderClickAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -163,7 +168,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Settings.route
                             )
                             if (showBottomBar) {
-                                VedLinkBottomNavBar(
+                                ModernBoxedBottomNavBar(
                                     currentRoute = effectiveRoute,
                                     isNavBarTransparent = isNavBarTransparent,
                                     onNavigate = { route ->
@@ -195,7 +200,34 @@ class MainActivity : ComponentActivity() {
                                     exit = scaleOut(animationSpec = tween(durationMillis = 300)) + fadeOut()
                                 ) {
                                     ExpandableMultiFab(
-                                        onAddLinkClick = { showAddDialog = true },
+                                        onAddLinkClick = {
+                                            prefillAddUrl = null
+                                            showAddDialog = true
+                                        },
+                                        onQuickPasteClick = {
+                                            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                            val text = clipboard?.primaryClip?.let { clip ->
+                                                if (clip.itemCount > 0) clip.getItemAt(0)?.coerceToText(this@MainActivity)?.toString()?.trim() else null
+                                            }
+                                            val url = text?.let { raw ->
+                                                LinkExtractor().extractUrls(raw).firstOrNull() ?: if (raw.startsWith("http://") || raw.startsWith("https://")) raw else null
+                                            }
+                                            if (!url.isNullOrBlank()) {
+                                                scope.launch {
+                                                    saveLinkUseCase(url = url)
+                                                        .onSuccess {
+                                                            snackbarHostState.showSnackbar("Quick saved & unfurling: $url")
+                                                        }
+                                                        .onFailure { e ->
+                                                            snackbarHostState.showSnackbar("Error saving: ${e.message ?: "Failed to save"}")
+                                                        }
+                                                }
+                                            } else {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("No valid URL found on clipboard")
+                                                }
+                                            }
+                                        },
                                         onAddTopicClick = { showAddTopicDialog = true },
                                         onNewFolderClick = onNewFolderClickAction
                                     )
@@ -213,7 +245,11 @@ class MainActivity : ComponentActivity() {
                                  onNavigateToDetails = { linkId ->
                                      navController.navigate(Screen.LinkDetails.createRoute(linkId))
                                  },
-                                 onShowNewFolderAction = { onNewFolderClickAction = it }
+                                 onShowNewFolderAction = { onNewFolderClickAction = it },
+                                 onOpenAddLink = { url ->
+                                     prefillAddUrl = url
+                                     showAddDialog = true
+                                 }
                              )
                         }
                     }
@@ -288,9 +324,14 @@ class MainActivity : ComponentActivity() {
                         EnhancedAddLinkBottomSheet(
                             recentLinks = recentLinks,
                             folders = allFolders,
-                            onDismiss = { showAddDialog = false },
+                            urlInputValue = prefillAddUrl ?: "",
+                            onDismiss = {
+                                showAddDialog = false
+                                prefillAddUrl = null
+                            },
                             onConfirm = { url, metadata ->
                                 showAddDialog = false
+                                prefillAddUrl = null
                                 scope.launch {
                                     saveLinkUseCase(
                                         url = url,
@@ -306,6 +347,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onSaveLinkNote = { url, noteTitle, noteBody, isPinned, folderId, tags, metadata ->
                                 showAddDialog = false
+                                prefillAddUrl = null
                                 scope.launch {
                                     saveLinkUseCase(
                                         url = url,
