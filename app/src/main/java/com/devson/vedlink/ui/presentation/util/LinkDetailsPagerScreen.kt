@@ -12,33 +12,22 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PageSize
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.PushPin
-import com.devson.vedlink.ui.viewmodel.SaveState
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -51,750 +40,352 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.devson.vedlink.ui.presentation.screens.LinkDetailsScreen
 import com.devson.vedlink.ui.viewmodel.LinkDetailsViewModel
-import com.devson.vedlink.ui.viewmodel.LinkDetailsUiState
 import com.devson.vedlink.ui.viewmodel.SettingsViewModel
-import com.devson.vedlink.domain.model.Folder
-import com.devson.vedlink.domain.model.Link
-import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LinkDetailsPagerScreen(
     initialLinkId: Int,
-    linkIds: List<Int>,
+    linkIds: List<Int> = listOf(initialLinkId),
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
 
-    val initialPage = linkIds.indexOf(initialLinkId).coerceAtLeast(0)
-    val pagerState = rememberPagerState(
-        initialPage = initialPage,
-        pageCount = { linkIds.size }
-    )
-
-    // ViewModels for dark mode setting and folders
+    // ViewModels
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val isDark by settingsViewModel.isDarkTheme.collectAsStateWithLifecycle()
 
-    // Dialog trigger states
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    val viewModel: LinkDetailsViewModel = hiltViewModel(key = "details_$initialLinkId")
+
+    LaunchedEffect(initialLinkId) {
+        viewModel.loadLink(initialLinkId)
+    }
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
+    val activeLink = uiState.link
+
     var showImageDialog by remember { mutableStateOf(false) }
-    var showUrlActionsSheet by remember { mutableStateOf(false) }
-    var showEditUrlDialog by remember { mutableStateOf(false) }
 
-    // Dynamic page state and ViewModel observation
-    val pageStates = remember { mutableStateMapOf<Int, LinkDetailsUiState>() }
-    val pageViewModels = remember { mutableStateMapOf<Int, LinkDetailsViewModel>() }
+    // Dynamic status bar color handling
+    val view = LocalView.current
+    val isDarkTheme = isDark ?: androidx.compose.foundation.isSystemInDarkTheme()
+    val defaultBg = MaterialTheme.colorScheme.background
 
-    val detailsViewModel: LinkDetailsViewModel = hiltViewModel()
-    val folders by detailsViewModel.folders.collectAsStateWithLifecycle()
+    val statusBarColorArgb = remember(activeLink?.accentColorHex, defaultBg) {
+        activeLink?.accentColorHex ?: defaultBg.toArgb()
+    }
 
-    val activePage = pagerState.currentPage.coerceIn(0, (linkIds.size - 1).coerceAtLeast(0))
-    val activeViewModel = pageViewModels[activePage]
-    val activeUiState = pageStates[activePage]
-    val activeLink = activeUiState?.link
-
-    val currentUrl = activeLink?.url
-    val pageText by remember(pagerState, linkIds.size) {
-        derivedStateOf {
-            if (linkIds.isEmpty()) "0 / 0"
-            else "${pagerState.currentPage + 1} / ${linkIds.size}"
+    val isLightStatusBar = remember(statusBarColorArgb, isDarkTheme, activeLink?.accentColorHex) {
+        if (activeLink?.accentColorHex != null) {
+            androidx.core.graphics.ColorUtils.calculateLuminance(statusBarColorArgb) > 0.45
+        } else {
+            !isDarkTheme
         }
     }
 
-    val onPreviousPage = if (pagerState.currentPage > 0) {
-        { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } }
-    } else null
-
-    val onNextPage = if (pagerState.currentPage < linkIds.lastIndex) {
-        { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } }
-    } else null
-
-    // Status bar color handling
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        val backgroundColor = MaterialTheme.colorScheme.background
-        val darkTheme = isDark ?: androidx.compose.foundation.isSystemInDarkTheme()
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
+    DisposableEffect(statusBarColorArgb, isLightStatusBar, defaultBg, isDarkTheme) {
+        val window = (view.context as? Activity)?.window
+        if (window != null && !view.isInEditMode) {
+            @Suppress("DEPRECATION")
+            window.statusBarColor = statusBarColorArgb
             val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
+            insetsController.isAppearanceLightStatusBars = isLightStatusBar
+        }
+        onDispose {
+            val window = (view.context as? Activity)?.window
+            if (window != null && !view.isInEditMode) {
+                @Suppress("DEPRECATION")
+                window.statusBarColor = defaultBg.toArgb()
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            }
         }
     }
 
     // Flush on system back navigation
     BackHandler {
-        activeViewModel?.flushPendingSave()
+        viewModel.flushPendingSave()
         onNavigateBack()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        val headerTitle = activeUiState?.noteTitle?.takeIf { it.isNotBlank() }
-                            ?: activeLink?.title?.takeIf { it.isNotBlank() }
-                            ?: "Link Note"
-                        Text(
-                            text = headerTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (activeUiState?.saveState == SaveState.Saving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(9.dp),
-                                    strokeWidth = 1.2.dp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = "Saving...",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDone,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(11.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
-                                Text(
-                                    text = "Saved",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        activeViewModel?.flushPendingSave()
-                        onNavigateBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { activeViewModel?.togglePin() },
-                        enabled = activeLink != null
-                    ) {
-                        val isPinned = activeUiState?.isPinned == true || activeLink?.isPinned == true
-                        Icon(
-                            imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = if (isPinned) "Unpin Note" else "Pin Note",
-                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(
-                        onClick = { activeLink?.url?.let { activeViewModel?.extractReadabilityText(it) } },
-                        enabled = activeLink?.url != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                            contentDescription = "Readability Mode"
-                        )
-                    }
-                    IconButton(
-                        onClick = { activeViewModel?.showQrCodeDialog(true) },
-                        enabled = activeLink != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCode,
-                            contentDescription = "QR Code"
-                        )
-                    }
-                    IconButton(
-                        onClick = { activeViewModel?.toggleFavorite() },
-                        enabled = activeLink != null
-                    ) {
-                        val isFavorite = activeLink?.isFavorite == true
-                        Icon(
-                            imageVector = if (isFavorite)
-                                Icons.Filled.Favorite
-                            else
-                                Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorite)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(
-                        onClick = { showDeleteDialog = true },
-                        enabled = activeLink != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        bottomBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shadowElevation = 8.dp
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isLoading && activeLink == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
+                CircularProgressIndicator()
+            }
+        } else if (activeLink != null) {
+            LinkDetailsScreen(
+                link = activeLink,
+                noteTitle = uiState.noteTitle,
+                noteBodyMarkdown = uiState.noteBodyMarkdown,
+                saveState = uiState.saveState,
+                canUndo = uiState.canUndo,
+                canRedo = uiState.canRedo,
+                folders = folders,
+                allTags = allTags,
+                onNavigateBack = {
+                    viewModel.flushPendingSave()
+                    onNavigateBack()
+                },
+                onNoteTitleChange = { viewModel.onNoteTitleChanged(it) },
+                onNoteBodyChange = { viewModel.onNoteBodyChanged(it) },
+                onAppendToNote = { viewModel.appendToNoteBody(it) },
+                onUndo = { viewModel.undo() },
+                onRedo = { viewModel.redo() },
+                onAssignFolder = { viewModel.assignFolder(it) },
+                onAddTag = { viewModel.addTag(it) },
+                onRemoveTag = { viewModel.removeTag(it) },
+                onTogglePin = { viewModel.togglePin() },
+                onToggleArchive = { viewModel.toggleArchive() },
+                onSetAccentColor = { viewModel.setAccentColor(it) },
+                onDeleteLink = {
+                    viewModel.deleteLink()
+                    onNavigateBack()
+                },
+                onEditUrl = { newUrl -> viewModel.updateUrl(newUrl) },
+                onRefreshMetadata = { viewModel.refreshMetadata() },
+                onOpenUrl = { openInBrowser(context, activeLink.url) },
+                onShareUrl = { shareLink(context, activeLink.url) },
+                onCopyUrl = { copyToClipboard(clipboardManager, context, activeLink.url, "URL") },
+                onReadabilityClick = { viewModel.extractReadabilityText(activeLink.url) },
+                onQrCodeClick = { viewModel.showQrCodeDialog(true) },
+                onImageClick = { showImageDialog = true },
+                onImageLongClick = {
+                    scope.launch {
+                        downloadImage(
+                            context = context,
+                            imageUrl = activeLink.imageUrl ?: "",
+                            fileName = activeLink.title ?: "image"
+                        )
+                    }
+                }
+            )
+        }
+
+        // Full Image Dialog with Download Option
+        if (showImageDialog && !activeLink?.imageUrl.isNullOrBlank()) {
+            val imageUrl = activeLink?.imageUrl ?: ""
+            val imageTitle = activeLink?.title ?: "image"
+            Dialog(onDismissRequest = { showImageDialog = false }) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .wrapContentHeight(),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    IconButton(
-                        onClick = { onPreviousPage?.invoke() },
-                        enabled = onPreviousPage != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Previous link",
-                            tint = if (onPreviousPage != null)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FilledTonalButton(
-                            onClick = { currentUrl?.let { openInBrowser(context, it) } },
-                            enabled = currentUrl != null,
-                            modifier = Modifier
-                                .height(40.dp)
-                                .weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.OpenInBrowser,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Open", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-
-                        Text(
-                            text = pageText,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Visible
-                        )
-
-                        FilledTonalButton(
-                            onClick = { currentUrl?.let { shareLink(context, it) } },
-                            enabled = currentUrl != null,
-                            modifier = Modifier
-                                .height(40.dp)
-                                .weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Share", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-
-                    IconButton(
-                        onClick = { onNextPage?.invoke() },
-                        enabled = onNextPage != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Next link",
-                            tint = if (onNextPage != null)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        )
-                    }
-                }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        HorizontalPager(
-            state = pagerState,
-            pageSize = PageSize.Fill,
-            beyondViewportPageCount = 1,          // Preload 1 adjacent page only
-            modifier = Modifier.fillMaxSize()
-        ) { pageIndex ->
-            val linkId = linkIds[pageIndex]
-            
-            // Only actively load data when the page is settled or ±1 adjacent.
-            val shouldLoad by remember(pagerState) {
-                derivedStateOf {
-                    abs(pagerState.settledPage - pageIndex) <= 1
-                }
-            }
-
-            // Each page gets its own ViewModel instance keyed to linkId
-            val pageViewModel: LinkDetailsViewModel =
-                hiltViewModel(key = "details_$linkId")
-
-            LaunchedEffect(linkId, shouldLoad) {
-                if (shouldLoad) {
-                    pageViewModel.loadLink(linkId)
-                }
-            }
-
-            val pageUiState by pageViewModel.uiState.collectAsStateWithLifecycle()
-            val allTags by pageViewModel.allTags.collectAsStateWithLifecycle()
-
-            DisposableEffect(pageIndex, pageViewModel) {
-                pageViewModels[pageIndex] = pageViewModel
-                onDispose {
-                    pageViewModels.remove(pageIndex)
-                }
-            }
-
-            SideEffect {
-                pageStates[pageIndex] = pageUiState
-            }
-
-            if (pageUiState.isLoading && pageUiState.link == null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                pageUiState.link?.let { link ->
-                    LinkDetailsScreen(
-                        link = link,
-                        noteTitle = pageUiState.noteTitle,
-                        noteBodyMarkdown = pageUiState.noteBodyMarkdown,
-                        onNoteTitleChange = { pageViewModel.onNoteTitleChanged(it) },
-                        onNoteBodyChange = { pageViewModel.onNoteBodyChanged(it) },
-                        onAppendToNote = { pageViewModel.appendToNoteBody(it) },
-                        folders = folders,
-                        paddingValues = paddingValues,
-                        onAssignFolder = { folderId -> pageViewModel.assignFolder(folderId) },
-                        onAddTag = { tag -> pageViewModel.addTag(tag) },
-                        onRemoveTag = { tag -> pageViewModel.removeTag(tag) },
-                        onUpdateNotes = { notes -> pageViewModel.updateNotes(notes) },
-                        onUrlCardClick = { showUrlActionsSheet = true },
-                        onImageClick = { showImageDialog = true },
-                        onImageLongClick = {
-                            scope.launch {
-                                downloadImage(
-                                    context = context,
-                                    imageUrl = link.imageUrl ?: "",
-                                    fileName = link.title ?: "image"
-                                )
-                            }
-                        },
-                        onRefreshMetadata = { pageViewModel.refreshMetadata() },
-                        onTogglePin = { pageViewModel.togglePin() },
-                        onOpenUrl = { currentUrl?.let { openInBrowser(context, it) } },
-                        onShareUrl = { currentUrl?.let { shareLink(context, it) } },
-                        onCopyUrl = {
-                            currentUrl?.let {
-                                copyToClipboard(clipboardManager, context, it, "URL")
-                            }
-                        },
-                        allTags = allTags
-                    )
-                }
-            }
-        }
-    }
-
-    // Delete Confirmation Dialog
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Link") },
-            text = { Text("Are you sure you want to delete this link? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        activeViewModel?.deleteLink()
-                        showDeleteDialog = false
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Full Image Dialog with Download Option
-    if (showImageDialog && !activeLink?.imageUrl.isNullOrBlank()) {
-        val imageUrl = activeLink?.imageUrl ?: ""
-        val imageTitle = activeLink?.title ?: "image"
-        Dialog(onDismissRequest = { showImageDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                shape = MaterialTheme.shapes.extraSmall
-            ) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 600.dp)
-                    ) {
-                        coil.compose.AsyncImage(
-                            model = coil.request.ImageRequest.Builder(context)
-                                .data(imageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Full Image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(MaterialTheme.shapes.extraSmall),
-                            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                scope.launch {
-                                    downloadImage(
-                                        context = context,
-                                        imageUrl = imageUrl,
-                                        fileName = imageTitle
-                                    )
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download")
-                        }
-
-                        OutlinedButton(
-                            onClick = { showImageDialog = false },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Close")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // URL Actions Bottom Sheet
-    if (showUrlActionsSheet && activeLink != null) {
-        val linkUrl = activeLink.url
-        ModalBottomSheet(
-            onDismissRequest = { showUrlActionsSheet = false },
-            sheetState = rememberModalBottomSheetState()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
-            ) {
-                Text(
-                    text = "Link Actions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                ListItem(
-                    headlineContent = { Text("Copy Link") },
-                    leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        copyToClipboard(
-                            clipboardManager,
-                            context,
-                            linkUrl,
-                            "URL"
-                        )
-                        showUrlActionsSheet = false
-                    }
-                )
-                ListItem(
-                    headlineContent = { Text("Edit Link") },
-                    leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        showUrlActionsSheet = false
-                        showEditUrlDialog = true
-                    }
-                )
-            }
-        }
-    }
-
-    // Edit URL Dialog
-    if (showEditUrlDialog && activeLink != null) {
-        val originalUrl = activeLink.url
-        var urlInput by remember(originalUrl) { mutableStateOf(originalUrl) }
-        var isError by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = { showEditUrlDialog = false },
-            title = { Text("Edit Link URL") },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = urlInput,
-                        onValueChange = {
-                            urlInput = it
-                            isError = it.isBlank()
-                        },
-                        label = { Text("URL") },
-                        isError = isError,
-                        supportingText = {
-                            if (isError) {
-                                Text("URL cannot be empty", color = MaterialTheme.colorScheme.error)
-                            }
-                        },
-                        trailingIcon = {
-                            if (urlInput != originalUrl) {
-                                IconButton(
-                                    onClick = { urlInput = originalUrl }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Undo,
-                                        contentDescription = "Reset to Original"
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (urlInput.isNotBlank()) {
-                            activeViewModel?.updateUrl(urlInput)
-                            showEditUrlDialog = false
-                        } else {
-                            isError = true
-                        }
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditUrlDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // QR Code Dialog
-    if (activeUiState?.showQrCodeDialog == true && activeLink != null) {
-        val qrUrl = activeLink.url
-        val qrBitmap = remember(qrUrl) {
-            generateQrCode(qrUrl, 512)
-        }
-
-        AlertDialog(
-            onDismissRequest = { activeViewModel?.showQrCodeDialog(false) },
-            title = {
-                Text(
-                    text = "QR Code",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    if (qrBitmap != null) {
-                        Image(
-                            bitmap = qrBitmap.asImageBitmap(),
-                            contentDescription = "QR Code for Link URL",
-                            modifier = Modifier
-                                .size(240.dp)
-                                .padding(8.dp)
-                        )
-                    } else {
+                    Column {
                         Box(
                             modifier = Modifier
-                                .size(240.dp)
-                                .padding(8.dp),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .heightIn(max = 500.dp)
                         ) {
-                            Text("Failed to generate QR Code")
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = qrUrl,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { activeViewModel?.showQrCodeDialog(false) }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
-
-    // Readability Mode Overlay
-    if (activeUiState?.isReadingModeActive == true && activeLink != null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { activeViewModel?.exitReadingMode() }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Exit Reading Mode"
-                        )
-                    }
-                    Text(
-                        text = "Reader View",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(48.dp))
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                if (activeUiState.isExtractingReaderText) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Extracting article text...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Full Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.medium),
+                                contentScale = ContentScale.FillWidth
                             )
                         }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilledTonalButton(
+                                onClick = {
+                                    scope.launch {
+                                        downloadImage(
+                                            context = context,
+                                            imageUrl = imageUrl,
+                                            fileName = imageTitle
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download")
+                            }
+
+                            OutlinedButton(
+                                onClick = { showImageDialog = false },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Close")
+                            }
+                        }
                     }
-                } else {
+                }
+            }
+        }
+
+        // QR Code Dialog
+        if (uiState.showQrCodeDialog && activeLink != null) {
+            val qrUrl = activeLink.url
+            val qrBitmap = remember(qrUrl) {
+                generateQrCode(qrUrl, 512)
+            }
+
+            AlertDialog(
+                onDismissRequest = { viewModel.showQrCodeDialog(false) },
+                title = {
+                    Text(
+                        text = "QR Code",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
                     Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 16.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = activeLink.title ?: "No Title",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                        if (qrBitmap != null) {
+                            Image(
+                                bitmap = qrBitmap.asImageBitmap(),
+                                contentDescription = "QR Code for Link URL",
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .padding(8.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Failed to generate QR Code")
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = activeLink.domain ?: "",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = qrUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.showQrCodeDialog(false) }) {
+                        Text("Close")
+                    }
+                }
+            )
+        }
+
+        // Readability Mode Overlay
+        if (uiState.isReadingModeActive && activeLink != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.exitReadingMode() }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Exit Reading Mode"
+                            )
+                        }
+                        Text(
+                            text = "Reader View",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            text = activeUiState.readabilityText ?: "",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                        Spacer(modifier = Modifier.width(48.dp))
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    if (uiState.isExtractingReaderText) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Extracting article text...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 16.dp)
+                        ) {
+                            Text(
+                                text = activeLink.title ?: "No Title",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = activeLink.domain ?: "",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = uiState.readabilityText ?: "",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                     }
                 }
             }
@@ -802,7 +393,6 @@ fun LinkDetailsPagerScreen(
     }
 }
 
-// Suspend function to download the image file to external downloads folder
 private suspend fun downloadImage(
     context: Context,
     imageUrl: String,
@@ -883,7 +473,7 @@ private fun openInBrowser(context: Context, url: String) {
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         context.startActivity(intent)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Toast.makeText(context, "Failed to open link", Toast.LENGTH_SHORT).show()
     }
 }
@@ -914,7 +504,7 @@ private fun generateQrCode(text: String, size: Int = 512): Bitmap? {
             }
         }
         bitmap
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }

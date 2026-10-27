@@ -42,6 +42,7 @@ fun CustomizeHomeScreen(
         val darkTheme = isDark ?: isSystemInDarkTheme()
         SideEffect {
             val window = (view.context as Activity).window
+            @Suppress("DEPRECATION")
             window.statusBarColor = backgroundColor.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme

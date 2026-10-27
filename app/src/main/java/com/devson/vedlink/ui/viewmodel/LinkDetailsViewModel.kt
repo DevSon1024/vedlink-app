@@ -34,8 +34,12 @@ data class LinkDetailsUiState(
     val isPinned: Boolean = false,
     val tags: List<String> = emptyList(),
     val folderId: Int? = null,
-    val saveState: SaveState = SaveState.Saved
+    val saveState: SaveState = SaveState.Saved,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false
 )
+
+private data class HistorySnapshot(val title: String, val body: String)
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -58,18 +62,9 @@ class LinkDetailsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LinkDetailsUiState())
     val uiState: StateFlow<LinkDetailsUiState> = _uiState.asStateFlow()
 
-    private val noteEditFlow = MutableSharedFlow<Pair<String, String>>(replay = 0, extraBufferCapacity = 1)
-
-    init {
-        viewModelScope.launch {
-            noteEditFlow
-                .debounce(500)
-                .distinctUntilChanged()
-                .collect { (title, body) ->
-                    persistNoteChanges(title, body)
-                }
-        }
-    }
+    private val undoStack = mutableListOf<HistorySnapshot>()
+    private val redoStack = mutableListOf<HistorySnapshot>()
+    private var lastSnapshotTime = 0L
 
     fun loadLink(id: Int) {
         viewModelScope.launch {
@@ -77,17 +72,28 @@ class LinkDetailsViewModel @Inject constructor(
 
             getLinkByIdUseCase(id)
                 .onSuccess { link ->
+                    val initialTitle = link.noteTitle ?: ""
+                    val initialBody = link.noteBodyMarkdown ?: link.notes ?: ""
+                    val initialSnapshot = HistorySnapshot(initialTitle, initialBody)
+
+                    undoStack.clear()
+                    redoStack.clear()
+                    undoStack.add(initialSnapshot)
+                    lastSnapshotTime = System.currentTimeMillis()
+
                     _uiState.update {
                         it.copy(
                             link = link,
                             isLoading = false,
                             error = null,
-                            noteTitle = link.noteTitle ?: "",
-                            noteBodyMarkdown = link.noteBodyMarkdown ?: link.notes ?: "",
+                            noteTitle = initialTitle,
+                            noteBodyMarkdown = initialBody,
                             isPinned = link.isPinned,
                             tags = link.tags,
                             folderId = link.folderId,
-                            saveState = SaveState.Saved
+                            saveState = SaveState.Saved,
+                            canUndo = false,
+                            canRedo = false
                         )
                     }
                 }
@@ -103,17 +109,72 @@ class LinkDetailsViewModel @Inject constructor(
     }
 
     fun onNoteTitleChanged(newTitle: String) {
-        _uiState.update { it.copy(noteTitle = newTitle, saveState = SaveState.Saving) }
-        noteEditFlow.tryEmit(newTitle to _uiState.value.noteBodyMarkdown)
+        val oldTitle = _uiState.value.noteTitle
+        val currentBody = _uiState.value.noteBodyMarkdown
+        if (newTitle == oldTitle) return
+
+        val now = System.currentTimeMillis()
+        val isWordBreak = newTitle.endsWith(" ") || (oldTitle.isNotEmpty() && newTitle.isEmpty())
+        val isSignificantDelete = (oldTitle.length - newTitle.length) > 1
+        val shouldCapture = (now - lastSnapshotTime > 500L) || isWordBreak || isSignificantDelete
+
+        if (shouldCapture) {
+            if (undoStack.isEmpty() || undoStack.last().title != oldTitle || undoStack.last().body != currentBody) {
+                undoStack.add(HistorySnapshot(oldTitle, currentBody))
+                if (undoStack.size > 50) undoStack.removeAt(0)
+            }
+            redoStack.clear()
+            lastSnapshotTime = now
+        }
+
+        _uiState.update {
+            it.copy(
+                noteTitle = newTitle,
+                canUndo = true,
+                canRedo = false
+            )
+        }
     }
 
     fun onNoteBodyChanged(newBody: String) {
-        _uiState.update { it.copy(noteBodyMarkdown = newBody, saveState = SaveState.Saving) }
-        noteEditFlow.tryEmit(_uiState.value.noteTitle to newBody)
+        val currentTitle = _uiState.value.noteTitle
+        val oldBody = _uiState.value.noteBodyMarkdown
+        if (newBody == oldBody) return
+
+        val now = System.currentTimeMillis()
+        val isWordBreak = newBody.endsWith(" ") || newBody.endsWith("\n") || (oldBody.isNotEmpty() && newBody.isEmpty())
+        val isSignificantDelete = (oldBody.length - newBody.length) > 1
+        val shouldCapture = (now - lastSnapshotTime > 500L) || isWordBreak || isSignificantDelete
+
+        if (shouldCapture) {
+            if (undoStack.isEmpty() || undoStack.last().title != currentTitle || undoStack.last().body != oldBody) {
+                undoStack.add(HistorySnapshot(currentTitle, oldBody))
+                if (undoStack.size > 50) undoStack.removeAt(0)
+            }
+            redoStack.clear()
+            lastSnapshotTime = now
+        }
+
+        _uiState.update {
+            it.copy(
+                noteBodyMarkdown = newBody,
+                canUndo = true,
+                canRedo = false
+            )
+        }
     }
 
     fun appendToNoteBody(textToAppend: String) {
+        val currentTitle = _uiState.value.noteTitle
         val currentBody = _uiState.value.noteBodyMarkdown
+
+        if (undoStack.isEmpty() || undoStack.last().title != currentTitle || undoStack.last().body != currentBody) {
+            undoStack.add(HistorySnapshot(currentTitle, currentBody))
+            if (undoStack.size > 50) undoStack.removeAt(0)
+        }
+        redoStack.clear()
+        lastSnapshotTime = System.currentTimeMillis()
+
         val newBody = if (currentBody.isBlank()) {
             textToAppend
         } else if (currentBody.endsWith("\n\n") || currentBody.endsWith("\n")) {
@@ -121,46 +182,75 @@ class LinkDetailsViewModel @Inject constructor(
         } else {
             currentBody + "\n" + textToAppend
         }
-        onNoteBodyChanged(newBody)
-    }
 
-    private suspend fun persistNoteChanges(title: String, body: String) {
-        val currentLink = _uiState.value.link ?: return
-        _uiState.update { it.copy(saveState = SaveState.Saving) }
-        try {
-            updateLinkUseCase.updateNote(
-                linkId = currentLink.id,
-                noteTitle = title,
-                noteBodyMarkdown = body
-            ).onSuccess { updatedLink ->
-                _uiState.update {
-                    it.copy(
-                        link = updatedLink,
-                        saveState = SaveState.Saved
-                    )
-                }
-            }.onFailure {
-                _uiState.update { it.copy(saveState = SaveState.Saved) }
-            }
-        } catch (e: Exception) {
-            _uiState.update { it.copy(saveState = SaveState.Saved) }
+        _uiState.update {
+            it.copy(
+                noteBodyMarkdown = newBody,
+                canUndo = true,
+                canRedo = false
+            )
         }
     }
 
-    fun flushPendingSave() {
-        val currentLink = _uiState.value.link ?: return
-        val title = _uiState.value.noteTitle
-        val body = _uiState.value.noteBodyMarkdown
-        if (title != (currentLink.noteTitle ?: "") || body != (currentLink.noteBodyMarkdown ?: currentLink.notes ?: "")) {
-            viewModelScope.launch {
-                persistNoteChanges(title, body)
+    fun undo() {
+        val currentTitle = _uiState.value.noteTitle
+        val currentBody = _uiState.value.noteBodyMarkdown
+
+        if (undoStack.isEmpty()) return
+
+        val lastItem = undoStack.last()
+        if (lastItem.title != currentTitle || lastItem.body != currentBody) {
+            redoStack.add(HistorySnapshot(currentTitle, currentBody))
+            _uiState.update {
+                it.copy(
+                    noteTitle = lastItem.title,
+                    noteBodyMarkdown = lastItem.body,
+                    canUndo = undoStack.size > 1,
+                    canRedo = true
+                )
             }
+            return
+        }
+
+        if (undoStack.size > 1) {
+            val popping = undoStack.removeAt(undoStack.lastIndex)
+            redoStack.add(popping)
+            val target = undoStack.last()
+            _uiState.update {
+                it.copy(
+                    noteTitle = target.title,
+                    noteBodyMarkdown = target.body,
+                    canUndo = undoStack.size > 1,
+                    canRedo = true
+                )
+            }
+        }
+    }
+
+    fun redo() {
+        if (redoStack.isEmpty()) return
+
+        val currentTitle = _uiState.value.noteTitle
+        val currentBody = _uiState.value.noteBodyMarkdown
+
+        val target = redoStack.removeAt(redoStack.lastIndex)
+        if (undoStack.isEmpty() || undoStack.last().title != currentTitle || undoStack.last().body != currentBody) {
+            undoStack.add(HistorySnapshot(currentTitle, currentBody))
+        }
+        undoStack.add(target)
+
+        _uiState.update {
+            it.copy(
+                noteTitle = target.title,
+                noteBodyMarkdown = target.body,
+                canUndo = true,
+                canRedo = redoStack.isNotEmpty()
+            )
         }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun onCleared() {
-        super.onCleared()
+    fun flushPendingSave() {
         val currentLink = _uiState.value.link ?: return
         val title = _uiState.value.noteTitle
         val body = _uiState.value.noteBodyMarkdown
@@ -175,6 +265,12 @@ class LinkDetailsViewModel @Inject constructor(
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun onCleared() {
+        super.onCleared()
+        flushPendingSave()
     }
 
     fun togglePin() {
@@ -212,6 +308,31 @@ class LinkDetailsViewModel @Inject constructor(
         val currentLink = _uiState.value.link ?: return
         viewModelScope.launch {
             deleteLinkUseCase(currentLink)
+        }
+    }
+
+    fun setAccentColor(colorHex: Int?) {
+        val currentLink = _uiState.value.link ?: return
+        val updated = currentLink.copy(
+            accentColorHex = colorHex,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
+        }
+    }
+
+    fun toggleArchive() {
+        val currentLink = _uiState.value.link ?: return
+        val newArchived = !currentLink.isArchived
+        val updated = currentLink.copy(
+            isArchived = newArchived,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateLinkUseCase(updated)
+            _uiState.update { it.copy(link = updated) }
         }
     }
 
